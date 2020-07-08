@@ -11,6 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,10 +106,15 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES ur5_gym
-#  CATKIN_DEPENDS roscpp rospy std_msgs
-#  DEPENDS system_lib
+  # INCLUDE_DIRS include
+  # LIBRARIES ur5_gym
+  CATKIN_DEPENDS
+    roscpp
+    rospy
+    std_msgs
+    moveit_core
+    moveit_ros_planning_interface
+  # DEPENDS system_lib
 )
 
 ###########

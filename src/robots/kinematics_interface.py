@@ -221,7 +221,7 @@ class StateValidity:
         """
         self._srv.close()
 
-    def get_state_validity(self, robot_state, group_name='right_arm', constraints=None):
+    def get_state_validity(self, robot_state, group_name='arm', constraints=None):
         """Get state validity.
 
         Arguments

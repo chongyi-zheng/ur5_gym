@@ -5,25 +5,24 @@ UR5 Interface.
 Adapt from https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/robots/sawyer.py
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import gym
-from intera_core_msgs.msg import JointLimits
-import intera_interface
 import moveit_msgs.msg
+import moveit_commander
+
 import numpy as np
 import rospy
 
-from sawyer.ros.robots.kinematics_interfaces import StateValidity
-from sawyer.ros.robots.robot import Robot
+from src.robots.kinematics_interface import StateValidity
+from src.robots.robot import Robot
 
 
-class UR5(Robot):
+class UR5(object, Robot):
     """UR5 class."""
-
-    def __init__(self,
-                 initial_joint_pos,
-                 moveit_group,
-                 control_mode='position'):
+    def __init__(self, initial_joint_pos, group_name, control_mode='position'):
         """Initialize a UR5 robot
 
         Arguments
@@ -32,9 +31,9 @@ class UR5(Robot):
             {'joint_name': position_value}, and also initial_joint_pos should include all of the 
             joints that user wants to control and observe.
         
-        - moveit_group: str
-            Use this to check safety
-        
+        - group_name: str
+            Name of the MoveIt! group
+
         - control_mode: string
             robot control mode, position or velocity or effort
         
@@ -42,17 +41,20 @@ class UR5(Robot):
         ----------
         
         """
-        Robot.__init__(self)
-        self._limb = intera_interface.Limb('right')
-        self._gripper = intera_interface.Gripper()
-        self._initial_joint_pos = initial_joint_pos
-        self._control_mode = control_mode
+        super(UR5, self).__init__()
+        # self._limb = intera_interface.Limb('right')
+        # self._gripper = intera_interface.Gripper()
+        self.initial_joint_pos = initial_joint_pos
+        self.group_name = group_name
+        self.control_mode = control_mode
+
+        self._moveit_robot = moveit_commander.RobotCommander()
+        self._moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
         self._used_joints = []
         for joint in initial_joint_pos:
             self._used_joints.append(joint)
-        self._joint_limits = rospy.wait_for_message('/robot/joint_limits',
-                                                    JointLimits)
-        self._moveit_group = moveit_group
+        # self._joint_limits = rospy.wait_for_message('/robot/joint_limits',
+        #                                             JointLimits)
 
         self._sv = StateValidity()
 
