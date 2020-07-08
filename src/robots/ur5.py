@@ -50,9 +50,9 @@ class UR5(object, Robot):
 
         self._moveit_robot = moveit_commander.RobotCommander()
         self._moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
-        self._used_joints = []
-        for joint in initial_joint_pos:
-            self._used_joints.append(joint)
+        self._joint_names = list(self.initial_joint_pos.keys())
+        # for joint in initial_joint_pos:
+        #     self._used_joints.append(joint)
         # self._joint_limits = rospy.wait_for_message('/robot/joint_limits',
         #                                             JointLimits)
 
@@ -119,9 +119,14 @@ class UR5(object, Robot):
     def _move_to_start_position(self):
         if rospy.is_shutdown():
             return
-        self._limb.move_to_joint_positions(
-            self._initial_joint_pos, timeout=5.0)
-        self._gripper.open()
+        joint_value_target = []
+        for joint_name in self._moveit_group.get_active_joints():
+            joint_value_target.append(self.initial_joint_pos[joint_name])
+        self._moveit_group.go(joint_value_target, wait=True)
+
+        # self._limb.move_to_joint_positions(
+        #     self._initial_joint_pos, timeout=5.0)
+        # self._gripper.open()
         rospy.sleep(1.0)
 
     def reset(self):
@@ -177,7 +182,7 @@ class UR5(object, Robot):
         commands = np.clip(commands, action_space.low, action_space.high)
         i = 0
         joint_commands = {}
-        for joint in self._used_joints:
+        for joint in self._joint_names:
             joint_commands[joint] = commands[i]
             i += 1
 

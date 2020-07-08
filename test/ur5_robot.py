@@ -9,11 +9,12 @@ from src.robots.ur5 import UR5
 
 INITIAL_GOAL = np.array([0.2, 0.0, 0.3])
 
+# up
 INITIAL_ROBOT_JOINT_POS = {
     'shoulder_pan_joint': 0.0,
-    'shoulder_lift_joint': 0.0,
+    'shoulder_lift_joint': -1.5707,
     'elbow_joint': 0.0,
-    'wrist_1_joint': 0.0,
+    'wrist_1_joint': -1.5707,
     'wrist_2_joint': 0.0,
     'wrist_3_joint': 0.0
 }
