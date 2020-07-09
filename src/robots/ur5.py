@@ -70,41 +70,58 @@ class UR5(object, Robot):
         self._sv = StateValidity()
 
     def safety_check(self):
-        """
-        If robot is in safe state.
-        :return safe: Bool
-                if robot is safe.
+        """If robot is in safe state
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - is_safe: bool
+            True when the robot is safe
+
         """
         rs = moveit_msgs.msg.RobotState()
-        current_joint_angles = self._limb.joint_angles()
-        for joint in current_joint_angles:
-            rs.joint_state.name.append(joint)
-            rs.joint_state.position.append(current_joint_angles[joint])
-        result = self._sv.get_state_validity(rs, self._moveit_group)
-        return result.valid
+        for joint_name, joint_position in zip(self._moveit_group.get_active_joints(),
+                                              self._moveit_group.get_current_joint_values()):
+            rs.joint_state.name.append(joint_name)
+            rs.joint_state.position.append(joint_position)
+        result = self._sv.get_state_validity(rs, self.group_name)
 
-    def safety_predict(self, joint_angles):
-        """
-        Will robot be in safe state.
-        :param joint_angles: {'': float}
-        :return safe: Bool
-                    if robot is safe.
+        is_safe = result.valid
+        return is_safe
+
+    def safety_predict(self, joint_values):
+        """Will robot be in safe state
+
+        Arguments
+        ----------
+        - joint_values: {str: float}
+            Dictionary of joint name and the corresponding positions
+
+        Returns
+        ----------
+        - is_safe: bool
+            True when the robot is safe.
+
         """
         rs = moveit_msgs.msg.RobotState()
-        for joint in joint_angles:
-            rs.joint_state.name.append(joint)
-            rs.joint_state.position.append(joint_angles[joint])
+        for joint_name, joint_position in joint_values.items():
+            rs.joint_state.name.append(joint_name)
+            rs.joint_state.position.append(joint_position)
         result = self._sv.get_state_validity(rs, self._moveit_group)
-        return result.valid
 
-    @property
-    def enabled(self):
-        """
-        If robot is enabled.
-        :return: if robot is enabled.
-        """
-        return intera_interface.RobotEnable(
-            intera_interface.CHECK_VERSION).state().enabled
+        is_safe = result.valid
+        return is_safe
+
+    # @property
+    # def enabled(self):
+    #     """
+    #     If robot is enabled.
+    #     :return: if robot is enabled.
+    #     """
+    #     return intera_interface.RobotEnable(
+    #         intera_interface.CHECK_VERSION).state().enabled
 
     def _set_limb_joint_positions(self, joint_angle_cmds):
         # limit joint angles cmd
@@ -156,7 +173,7 @@ class UR5(object, Robot):
         Returns
         ----------
         - obs: np.ndarray
-            Current obseravtion
+            Current observation
 
         """
         # cartesian space
@@ -189,11 +206,7 @@ class UR5(object, Robot):
             observation space
 
         """
-        return gym.spaces.Box(
-            -np.inf,
-            np.inf,
-            shape=self.get_observation().shape,
-            dtype=np.float32)
+        return gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().shape, dtype=np.float32)
 
     def send_command(self, commands):
         """Send command to UR5
@@ -249,32 +262,14 @@ class UR5(object, Robot):
         """
         lower_bounds = np.array([])
         upper_bounds = np.array([])
-        for joint in self._used_joints:
-            joint_idx = self._joint_limits.joint_names.index(joint)
-            if self._control_mode == 'position':
-                lower_bounds = np.concatenate(
-                    (lower_bounds,
-                     np.array(self._joint_limits.position_lower[
-                         joint_idx:joint_idx + 1])))
-                upper_bounds = np.concatenate(
-                    (upper_bounds,
-                     np.array(self._joint_limits.position_upper[
-                         joint_idx:joint_idx + 1])))
-            elif self._control_mode == 'velocity':
-                velocity_limit = np.array(
-                    self._joint_limits.velocity[joint_idx:joint_idx + 1]) * 0.1
-                lower_bounds = np.concatenate((lower_bounds, -velocity_limit))
-                upper_bounds = np.concatenate((upper_bounds, velocity_limit))
-            elif self._control_mode == 'effort':
-                effort_limit = np.array(
-                    self._joint_limits.effort[joint_idx:joint_idx + 1])
-                lower_bounds = np.concatenate((lower_bounds, -effort_limit))
-                upper_bounds = np.concatenate((upper_bounds, effort_limit))
-            else:
-                raise ValueError(
-                    'Control mode %s is not known!' % self._control_mode)
 
-        return gym.spaces.Box(
-            np.concatenate((lower_bounds, np.array([0]))),
-            np.concatenate((upper_bounds, np.array([100]))),
-            dtype=np.float32)
+        for joint_name in self._moveit_group.get_active_joints():
+            joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)
+            if self.control_mode == 'position':
+                lower_bounds = np.concatenate([lower_bounds, joint_limit[0]], axis=0)
+                upper_bounds = np.concatenate([upper_bounds, joint_limit[1]], axis=0)
+            else:
+                raise ValueError('Control mode %s is not known!' % self.control_mode)
+
+        # no gripper now
+        return gym.spaces.Box(lower_bounds, upper_bounds, dtype=np.float32)

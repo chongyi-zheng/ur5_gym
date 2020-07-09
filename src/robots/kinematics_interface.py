@@ -191,7 +191,6 @@ class InverseKinematics:
 
 class StateValidity:
     """Interface to MoveIt! StateValidity service."""
-
     def __init__(self, srv_name='/check_state_validity'):
         """Interface to MoveIt! StateValidity service.
 

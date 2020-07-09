@@ -26,6 +26,8 @@ def main():
     ur5.reset()
 
     obs = ur5.get_observation()
+    observation_space = ur5.observation_space
+    action_space = ur5.action_space
     print("Done")
 
 
