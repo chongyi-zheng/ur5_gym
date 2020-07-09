@@ -21,6 +21,9 @@ from src.robots.kinematics_interface import StateValidity
 from src.robots.robot import Robot
 
 
+POS_DELTA_FACTOR = 0.1
+
+
 class UR5(object, Robot):
     """UR5 class."""
     def __init__(self, initial_joint_pos, group_name, node_name='ur5_robot', js_topic_name='/joint_states',
@@ -61,13 +64,39 @@ class UR5(object, Robot):
         rospy.init_node(self.node_name, anonymous=True)
         self._moveit_robot = moveit_commander.RobotCommander()
         self._moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
-        self._joint_names = list(self.initial_joint_pos.keys())
-        # for joint in initial_joint_pos:
-        #     self._used_joints.append(joint)
-        # self._joint_limits = rospy.wait_for_message('/robot/joint_limits',
-        #                                             JointLimits)
-
+        self._joint_names = self._moveit_group.get_active_joints()
         self._sv = StateValidity()
+        self._observation_space = None
+        self._action_space = None
+
+        self._setup_spaces()
+
+    def _setup_spaces(self):
+        """Setup observation and action spaces
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().shape, dtype=np.float32)
+
+        lower_bounds = []
+        upper_bounds = []
+        for joint_name in self._joint_names:
+            joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)[0]
+            if self.control_mode == 'position':
+                lower_bounds.append(joint_limit[0])
+                upper_bounds.append(joint_limit[1])
+            else:
+                raise ValueError('Control mode {} is not known!'.format(self.control_mode))
+        lower_bounds = np.asarray(lower_bounds)
+        upper_bounds = np.asarray(upper_bounds)
+
+        # no gripper now
+        self._action_space = gym.spaces.Box(lower_bounds, upper_bounds, dtype=np.float32)
 
     def safety_check(self):
         """If robot is in safe state
@@ -82,8 +111,7 @@ class UR5(object, Robot):
 
         """
         rs = moveit_msgs.msg.RobotState()
-        for joint_name, joint_position in zip(self._moveit_group.get_active_joints(),
-                                              self._moveit_group.get_current_joint_values()):
+        for joint_name, joint_position in zip(self._joint_names, self._moveit_group.get_current_joint_values()):
             rs.joint_state.name.append(joint_name)
             rs.joint_state.position.append(joint_position)
         result = self._sv.get_state_validity(rs, self.group_name)
@@ -109,7 +137,7 @@ class UR5(object, Robot):
         for joint_name, joint_position in joint_values.items():
             rs.joint_state.name.append(joint_name)
             rs.joint_state.position.append(joint_position)
-        result = self._sv.get_state_validity(rs, self._moveit_group)
+        result = self._sv.get_state_validity(rs, self.group_name)
 
         is_safe = result.valid
         return is_safe
@@ -123,32 +151,42 @@ class UR5(object, Robot):
     #     return intera_interface.RobotEnable(
     #         intera_interface.CHECK_VERSION).state().enabled
 
-    def _set_limb_joint_positions(self, joint_angle_cmds):
+    def _set_joint_positions(self, joint_position_cmds):
+        """Set joint position command
+
+        Arguments
+        ----------
+        - joint_position_cmds: np.ndarray
+            Joint position commands
+
+        Returns
+        ----------
+
+        """
         # limit joint angles cmd
-        current_joint_angles = self._limb.joint_angles()
-        for joint in joint_angle_cmds:
-            joint_cmd_delta = joint_angle_cmds[joint] - \
-                              current_joint_angles[joint]
-            joint_angle_cmds[
-                joint] = current_joint_angles[joint] + joint_cmd_delta * 0.1
+        current_joint_positions = self._moveit_group.get_current_joint_values()
+        for joint_name, current_joint_position in zip(self._joint_names, current_joint_positions):
+            joint_position_delta = joint_position_cmds[joint_name] - current_joint_position
+            joint_position_cmds[joint_name] = current_joint_position + joint_position_delta * POS_DELTA_FACTOR
 
-        if self.safety_predict(joint_angle_cmds):
-            self._limb.set_joint_positions(joint_angle_cmds)
+        if self.safety_predict(joint_position_cmds):
+            self._moveit_group.go(joint_position_cmds, wait=True)
 
-    def _set_limb_joint_velocities(self, joint_angle_cmds):
-        self._limb.set_joint_velocities(joint_angle_cmds)
-
-    def _set_limb_joint_torques(self, joint_angle_cmds):
-        self._limb.set_joint_torques(joint_angle_cmds)
-
-    def _set_gripper_position(self, position):
-        self._gripper.set_position(position)
+    # def _set_limb_joint_velocities(self, joint_angle_cmds):
+    #     self._limb.set_joint_velocities(joint_angle_cmds)
+    #
+    # def _set_limb_joint_torques(self, joint_angle_cmds):
+    #     self._limb.set_joint_torques(joint_angle_cmds)
+    #
+    # def _set_gripper_position(self, position):
+    #     # no gripper now
+    #     self._gripper.set_position(position)
 
     def _move_to_start_position(self):
         if rospy.is_shutdown():
             return
         joint_value_target = []
-        for joint_name in self._moveit_group.get_active_joints():
+        for joint_name in self._joint_names:
             joint_value_target.append(self.initial_joint_pos[joint_name])
         self._moveit_group.go(joint_value_target, wait=True)
 
@@ -193,6 +231,44 @@ class UR5(object, Robot):
 
         return obs
 
+    def send_command(self, commands):
+        """Send command to UR5
+
+        Arguments
+        ----------
+        - commands: np.ndarray
+            Command for different joints and gripper
+
+        Returns
+        ----------
+
+        """
+        action_space = self.action_space
+        commands = np.clip(commands, action_space.low, action_space.high)
+        joint_commands = {}
+        for joint_name, joint_command in zip(self._joint_names, commands[:len(self._joint_names)]):
+            joint_commands[joint_name] = joint_command
+
+        if self.control_mode == 'position':
+            self._set_joint_positions(joint_commands)
+        else:
+            raise ValueError('Control mode {} is not known!'.format(self.control_mode))
+        # elif self.control_mode == 'velocity':
+        #     self._set_limb_joint_velocities(joint_commands)
+        # elif self.control_mode == 'effort':
+        #     self._set_limb_joint_torques(joint_commands)
+
+        # no gripper now
+        # self._set_gripper_position(commands[7])
+
+    # @property
+    # def gripper_pose(self):
+    #     """
+    #     Get the gripper pose.
+    #     :return: gripper pose
+    #     """
+    #     return self._limb.endpoint_pose()
+
     @property
     def observation_space(self):
         """Observation space
@@ -202,50 +278,11 @@ class UR5(object, Robot):
 
         Returns
         ----------
-        - obs_space: gym.spaces
-            observation space
+        - observation_space: gym.spaces
+            Observation space
 
         """
-        return gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().shape, dtype=np.float32)
-
-    def send_command(self, commands):
-        """Send command to UR5
-
-        Arguments
-        ----------
-        - commands: np.ndarray
-            Control command
-
-        Returns
-        ----------
-
-        :param commands: [float]
-                    list of command for different joints and gripper
-        """
-        action_space = self.action_space
-        commands = np.clip(commands, action_space.low, action_space.high)
-        i = 0
-        joint_commands = {}
-        for joint in self._joint_names:
-            joint_commands[joint] = commands[i]
-            i += 1
-
-        if self.control_mode == 'position':
-            self._set_limb_joint_positions(joint_commands)
-        elif self.control_mode == 'velocity':
-            self._set_limb_joint_velocities(joint_commands)
-        elif self.control_mode == 'effort':
-            self._set_limb_joint_torques(joint_commands)
-
-        self._set_gripper_position(commands[7])
-
-    # @property
-    # def gripper_pose(self):
-    #     """
-    #     Get the gripper pose.
-    #     :return: gripper pose
-    #     """
-    #     return self._limb.endpoint_pose()
+        return self._observation_space
 
     @property
     def action_space(self):
@@ -260,16 +297,4 @@ class UR5(object, Robot):
             Action space
 
         """
-        lower_bounds = np.array([])
-        upper_bounds = np.array([])
-
-        for joint_name in self._moveit_group.get_active_joints():
-            joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)
-            if self.control_mode == 'position':
-                lower_bounds = np.concatenate([lower_bounds, joint_limit[0]], axis=0)
-                upper_bounds = np.concatenate([upper_bounds, joint_limit[1]], axis=0)
-            else:
-                raise ValueError('Control mode %s is not known!' % self.control_mode)
-
-        # no gripper now
-        return gym.spaces.Box(lower_bounds, upper_bounds, dtype=np.float32)
+        return self._action_space

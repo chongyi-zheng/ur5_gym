@@ -26,9 +26,12 @@ def main():
     ur5.reset()
 
     obs = ur5.get_observation()
+    print(obs)
     observation_space = ur5.observation_space
+    print(observation_space)
     action_space = ur5.action_space
-    print("Done")
+    print(action_space)
+    ur5.send_command(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
 
 
 if __name__ == '__main__':
