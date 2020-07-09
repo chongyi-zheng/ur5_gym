@@ -24,6 +24,8 @@ def main():
     ur5 = UR5(INITIAL_ROBOT_JOINT_POS, 'manipulator')
 
     ur5.reset()
+
+    obs = ur5.get_observation()
     print("Done")
 
 

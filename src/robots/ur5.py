@@ -12,6 +12,7 @@ from __future__ import print_function
 import gym
 import moveit_msgs.msg
 import moveit_commander
+from sensor_msgs.msg import JointState
 
 import numpy as np
 import rospy
@@ -22,7 +23,8 @@ from src.robots.robot import Robot
 
 class UR5(object, Robot):
     """UR5 class."""
-    def __init__(self, initial_joint_pos, group_name, control_mode='position'):
+    def __init__(self, initial_joint_pos, group_name, node_name='ur5_robot', js_topic_name='/joint_states',
+                 control_mode='position'):
         """Initialize a UR5 robot
 
         Arguments
@@ -34,7 +36,13 @@ class UR5(object, Robot):
         - group_name: str
             Name of the MoveIt! group
 
-        - control_mode: string
+        - node_name: str (default = 'ur5_robot')
+            Name of the ROS node
+
+        - js_topic_name: str (default = '/joint_states)
+            Name of the joint state topic
+
+        - control_mode: str (default = 'position')
             robot control mode, position or velocity or effort
         
         Returns
@@ -46,8 +54,11 @@ class UR5(object, Robot):
         # self._gripper = intera_interface.Gripper()
         self.initial_joint_pos = initial_joint_pos
         self.group_name = group_name
+        self.node_name = node_name
+        self.js_topic_name = js_topic_name
         self.control_mode = control_mode
 
+        rospy.init_node(self.node_name, anonymous=True)
         self._moveit_robot = moveit_commander.RobotCommander()
         self._moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
         self._joint_names = list(self.initial_joint_pos.keys())
@@ -124,47 +135,59 @@ class UR5(object, Robot):
             joint_value_target.append(self.initial_joint_pos[joint_name])
         self._moveit_group.go(joint_value_target, wait=True)
 
-        # self._limb.move_to_joint_positions(
-        #     self._initial_joint_pos, timeout=5.0)
-        # self._gripper.open()
-        rospy.sleep(1.0)
-
     def reset(self):
-        """Reset sawyer."""
+        """Reset UR5
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
         self._move_to_start_position()
 
     def get_observation(self):
-        """
-        Get robot observation.
-        :return: robot observation
+        """Get robot observation.
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - obs: np.ndarray
+            Current obseravtion
+
         """
         # cartesian space
-        gripper_pos = np.array(self._limb.endpoint_pose()['position'])
-        gripper_ori = np.array(self._limb.endpoint_pose()['orientation'])
-        gripper_lvel = np.array(self._limb.endpoint_velocity()['linear'])
-        gripper_avel = np.array(self._limb.endpoint_velocity()['angular'])
-        gripper_force = np.array(self._limb.endpoint_effort()['force'])
-        gripper_torque = np.array(self._limb.endpoint_effort()['torque'])
+        ee_pose = self._moveit_group.get_current_pose()
+        ee_position = np.array([ee_pose.pose.position.x, ee_pose.pose.position.y, ee_pose.pose.position.z])
+        ee_orientation = np.array([ee_pose.pose.orientation.x, ee_pose.pose.orientation.y,
+                                   ee_pose.pose.orientation.z, ee_pose.pose.orientation.w])
 
         # joint space
-        robot_joint_angles = np.array(list(self._limb.joint_angles().values()))
-        robot_joint_velocities = np.array(
-            list(self._limb.joint_velocities().values()))
-        robot_joint_efforts = np.array(
-            list(self._limb.joint_efforts().values()))
+        jac = np.asarray(self._moveit_group.get_jacobian_matrix(self._moveit_group.get_current_joint_values()))
+        js = rospy.wait_for_message(self.js_topic_name, JointState)
+        joint_positions = np.asarray(js.position)
+        joint_velocities = np.asarray(js.velocity)
+        ee_twist = np.matmul(jac, joint_velocities)
 
-        obs = np.concatenate(
-            (gripper_pos, gripper_ori, gripper_lvel, gripper_avel,
-             gripper_force, gripper_torque, robot_joint_angles,
-             robot_joint_velocities, robot_joint_efforts))
+        obs = np.concatenate([ee_position, ee_orientation, ee_twist, joint_positions, joint_velocities], axis=0)
+
         return obs
 
     @property
     def observation_space(self):
-        """
-        Observation space.
-        :return: gym.spaces
-                    observation space
+        """Observation space
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - obs_space: gym.spaces
+            observation space
+
         """
         return gym.spaces.Box(
             -np.inf,
@@ -173,8 +196,16 @@ class UR5(object, Robot):
             dtype=np.float32)
 
     def send_command(self, commands):
-        """
-        Send command to sawyer.
+        """Send command to UR5
+
+        Arguments
+        ----------
+        - commands: np.ndarray
+            Control command
+
+        Returns
+        ----------
+
         :param commands: [float]
                     list of command for different joints and gripper
         """
@@ -186,28 +217,35 @@ class UR5(object, Robot):
             joint_commands[joint] = commands[i]
             i += 1
 
-        if self._control_mode == 'position':
+        if self.control_mode == 'position':
             self._set_limb_joint_positions(joint_commands)
-        elif self._control_mode == 'velocity':
+        elif self.control_mode == 'velocity':
             self._set_limb_joint_velocities(joint_commands)
-        elif self._control_mode == 'effort':
+        elif self.control_mode == 'effort':
             self._set_limb_joint_torques(joint_commands)
 
         self._set_gripper_position(commands[7])
 
-    @property
-    def gripper_pose(self):
-        """
-        Get the gripper pose.
-        :return: gripper pose
-        """
-        return self._limb.endpoint_pose()
+    # @property
+    # def gripper_pose(self):
+    #     """
+    #     Get the gripper pose.
+    #     :return: gripper pose
+    #     """
+    #     return self._limb.endpoint_pose()
 
     @property
     def action_space(self):
-        """
-        Return a Space object.
-        :return: action space
+        """Action space
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - action_space: gym.spaces
+            Action space
+
         """
         lower_bounds = np.array([])
         upper_bounds = np.array([])
@@ -235,6 +273,7 @@ class UR5(object, Robot):
             else:
                 raise ValueError(
                     'Control mode %s is not known!' % self._control_mode)
+
         return gym.spaces.Box(
             np.concatenate((lower_bounds, np.array([0]))),
             np.concatenate((upper_bounds, np.array([100]))),
