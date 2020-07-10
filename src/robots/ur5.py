@@ -24,10 +24,10 @@ from src.robots.robot import Robot
 POS_DELTA_FACTOR = 0.1
 
 
-class UR5(object, Robot):
+class UR5(Robot):
     """UR5 class."""
-    def __init__(self, initial_joint_pos, group_name, node_name='ur5_robot', js_topic_name='/joint_states',
-                 control_mode='position'):
+    def __init__(self, initial_joint_pos, group_name='manipulator', node_name='ur5_robot',
+                 js_topic_name='/joint_states', control_mode='position'):
         """Initialize a UR5 robot
 
         Arguments
@@ -98,50 +98,6 @@ class UR5(object, Robot):
         # no gripper now
         self._action_space = gym.spaces.Box(lower_bounds, upper_bounds, dtype=np.float32)
 
-    def safety_check(self):
-        """If robot is in safe state
-
-        Arguments
-        ----------
-
-        Returns
-        ----------
-        - is_safe: bool
-            True when the robot is safe
-
-        """
-        rs = moveit_msgs.msg.RobotState()
-        for joint_name, joint_position in zip(self._joint_names, self._moveit_group.get_current_joint_values()):
-            rs.joint_state.name.append(joint_name)
-            rs.joint_state.position.append(joint_position)
-        result = self._sv.get_state_validity(rs, self.group_name)
-
-        is_safe = result.valid
-        return is_safe
-
-    def safety_predict(self, joint_values):
-        """Will robot be in safe state
-
-        Arguments
-        ----------
-        - joint_values: {str: float}
-            Dictionary of joint name and the corresponding positions
-
-        Returns
-        ----------
-        - is_safe: bool
-            True when the robot is safe.
-
-        """
-        rs = moveit_msgs.msg.RobotState()
-        for joint_name, joint_position in joint_values.items():
-            rs.joint_state.name.append(joint_name)
-            rs.joint_state.position.append(joint_position)
-        result = self._sv.get_state_validity(rs, self.group_name)
-
-        is_safe = result.valid
-        return is_safe
-
     # @property
     # def enabled(self):
     #     """
@@ -190,6 +146,72 @@ class UR5(object, Robot):
             joint_value_target.append(self.initial_joint_pos[joint_name])
         self._moveit_group.go(joint_value_target, wait=True)
 
+    def get_ee_pose(self):
+        """Return current end effector pose
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - ee_position: np.ndarray
+            End effector position
+
+        - ee_orientation: np.ndarray
+            End effector orientation
+
+        """
+        ee_pose = self._moveit_group.get_current_pose()
+        ee_position = np.array([ee_pose.pose.position.x, ee_pose.pose.position.y, ee_pose.pose.position.z])
+        ee_orientation = np.array([ee_pose.pose.orientation.x, ee_pose.pose.orientation.y,
+                                   ee_pose.pose.orientation.z, ee_pose.pose.orientation.w])
+
+        return ee_position, ee_orientation
+
+    def safety_check(self):
+        """If robot is in safe state
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - is_safe: bool
+            True when the robot is safe
+
+        """
+        rs = moveit_msgs.msg.RobotState()
+        for joint_name, joint_position in zip(self._joint_names, self._moveit_group.get_current_joint_values()):
+            rs.joint_state.name.append(joint_name)
+            rs.joint_state.position.append(joint_position)
+        result = self._sv.get_state_validity(rs, self.group_name)
+
+        is_safe = result.valid
+        return is_safe
+
+    def safety_predict(self, joint_values):
+        """Will robot be in safe state
+
+        Arguments
+        ----------
+        - joint_values: {str: float}
+            Dictionary of joint name and the corresponding positions
+
+        Returns
+        ----------
+        - is_safe: bool
+            True when the robot is safe.
+
+        """
+        rs = moveit_msgs.msg.RobotState()
+        for joint_name, joint_position in joint_values.items():
+            rs.joint_state.name.append(joint_name)
+            rs.joint_state.position.append(joint_position)
+        result = self._sv.get_state_validity(rs, self.group_name)
+
+        is_safe = result.valid
+        return is_safe
+
     def reset(self):
         """Reset UR5
 
@@ -215,10 +237,7 @@ class UR5(object, Robot):
 
         """
         # cartesian space
-        ee_pose = self._moveit_group.get_current_pose()
-        ee_position = np.array([ee_pose.pose.position.x, ee_pose.pose.position.y, ee_pose.pose.position.z])
-        ee_orientation = np.array([ee_pose.pose.orientation.x, ee_pose.pose.orientation.y,
-                                   ee_pose.pose.orientation.z, ee_pose.pose.orientation.w])
+        ee_position, ee_orientation = self.get_ee_pose()
 
         # joint space
         jac = np.asarray(self._moveit_group.get_jacobian_matrix(self._moveit_group.get_current_joint_values()))

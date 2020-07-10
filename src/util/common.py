@@ -9,6 +9,7 @@ Adapt from https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/util
 from functools import wraps
 import threading
 import time
+import numpy as np
 
 
 def rate_limited(max_per_second):
@@ -46,3 +47,24 @@ def rate_limited(max_per_second):
         return rate_limited_function
 
     return decorate
+
+
+def goal_distance(goal_a, goal_b):
+    """Compute distance between achieved goal and goal.
+
+    Arguments
+    ----------
+    - goal_a: np.ndarray
+        The first goal
+
+    - goal_b: np.ndarray
+        The second goal
+
+    Returns
+    ----------
+    - distance: float
+        Distance between goal_a and goal_b
+
+    """
+    assert goal_a.shape == goal_b.shape
+    return np.linalg.norm(goal_a - goal_b, axis=-1)

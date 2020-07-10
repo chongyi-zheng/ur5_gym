@@ -8,7 +8,7 @@ Taken from https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/robo
 """
 
 
-class Robot:
+class Robot(object):
     def __init__(self):
         """Initialize a Robot object
 
