@@ -36,13 +36,19 @@ class UR5Env(gym.Env, Serializable, metaclass=abc.ABCMeta):
         - robot_control_mode: str (default = 'position')
             Robot control mode, only position control is available now
 
+        Returns
+        ----------
+
         """
         super(UR5Env, self).__init__()
         Serializable.quick_init(self, locals())
 
         self.initial_goal = initial_goal
+        self.initial_joint_pos = initial_joint_pos
         self.sparse_reward = sparse_reward
         self.distance_threshold = distance_threshold
+        self.robot_group_name = robot_group_name
+        self.robot_control_mode = robot_control_mode
 
         self._goal = None
         self._robot = UR5(initial_joint_pos, group_name=robot_group_name, control_mode=robot_control_mode)

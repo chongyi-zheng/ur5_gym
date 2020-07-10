@@ -71,6 +71,64 @@ class UR5(Robot):
 
         self._setup_spaces()
 
+    @property
+    def observation_space(self):
+        """Observation space
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - observation_space: gym.spaces
+            Observation space
+
+        """
+        return self._observation_space
+
+    @property
+    def action_space(self):
+        """Action space
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - action_space: gym.spaces
+            Action space
+
+        """
+        return self._action_space
+
+    @property
+    def moveit_robot(self):
+        """MoveIt! RobotCommander
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - moveit_robot: moveit_commander.RobotCommander
+
+        """
+        return self._moveit_robot
+
+    @property
+    def moveit_group(self):
+        """MoveIt! MoveGroupCommander
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - moveit_group: moveit_commander.MoveGroupCommander
+
+        """
+        return self._moveit_group
+
     def _setup_spaces(self):
         """Setup observation and action spaces
 
@@ -287,33 +345,3 @@ class UR5(Robot):
     #     :return: gripper pose
     #     """
     #     return self._limb.endpoint_pose()
-
-    @property
-    def observation_space(self):
-        """Observation space
-
-        Arguments
-        ----------
-
-        Returns
-        ----------
-        - observation_space: gym.spaces
-            Observation space
-
-        """
-        return self._observation_space
-
-    @property
-    def action_space(self):
-        """Action space
-
-        Arguments
-        ----------
-
-        Returns
-        ----------
-        - action_space: gym.spaces
-            Action space
-
-        """
-        return self._action_space
