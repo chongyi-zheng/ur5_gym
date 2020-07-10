@@ -1,17 +1,18 @@
 # from src.envs.ros_env import RosEnv
 
 import gym
-import abc
+from abc import ABCMeta, abstractmethod
 import collections
 
-from src.core.serializable import Serializable
 from src.robots.ur5 import UR5
 from src.util.common import rate_limited, goal_distance
 
 STEP_FREQ = 20
 
 
-class UR5Env(gym.Env, Serializable, metaclass=abc.ABCMeta):
+class UR5Env(gym.Env):
+    __metaclass__ = ABCMeta
+
     def __init__(self, initial_goal, initial_joint_pos, sparse_reward=True, distance_threshold=0.05,
                  robot_group_name='manipulator', robot_control_mode='position'):
         """Initialize a UR5Env object
@@ -41,7 +42,6 @@ class UR5Env(gym.Env, Serializable, metaclass=abc.ABCMeta):
 
         """
         super(UR5Env, self).__init__()
-        Serializable.quick_init(self, locals())
 
         self.initial_goal = initial_goal
         self.initial_joint_pos = initial_joint_pos
@@ -74,7 +74,7 @@ class UR5Env(gym.Env, Serializable, metaclass=abc.ABCMeta):
     # def shutdown(self):
     #     self._world.terminate()
 
-    @abc.abstractmethod
+    @abstractmethod
     def _sample_goal(self):
         """Sample goal
 

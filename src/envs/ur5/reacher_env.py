@@ -10,9 +10,10 @@ import moveit_commander
 
 from src.envs.ur5 import UR5Env
 from src.worlds import EmptyWorld
+from src.core.serializable import Serializable
 
 
-class ReacherEnv(UR5Env):
+class ReacherEnv(UR5Env, Serializable):
     """Reacher Environment"""
     def __init__(self, initial_goal, initial_joint_pos, sparse_reward=True, simulated=True, distance_threshold=0.05,
                  target_range=0.15, robot_group_name='manipulator', robot_control_mode='position'):
@@ -48,6 +49,7 @@ class ReacherEnv(UR5Env):
         ----------
 
         """
+        Serializable.quick_init(self, locals())
         super(ReacherEnv, self).__init__(initial_goal, initial_joint_pos, sparse_reward, distance_threshold,
                                          robot_group_name, robot_control_mode)
         self.target_range = target_range
@@ -75,6 +77,23 @@ class ReacherEnv(UR5Env):
         goal[:2] += random_goal_delta
 
         return goal
+
+    def reset(self):
+        """Resets the state of the environment, returning an initial observation
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+        - intial_observation: np.ndarray
+            The initial observation of the task
+
+        """
+        initial_observation = super(ReacherEnv, self).reset()
+        self._world.reset()
+
+        return initial_observation
 
     def close(self):
         """Clean up the environment
