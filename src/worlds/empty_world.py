@@ -13,6 +13,7 @@ import gym
 import numpy as np
 
 from src.worlds.world import World
+from src.objects import BoxTable
 
 
 class EmptyWorld(World):
@@ -39,6 +40,7 @@ class EmptyWorld(World):
         self.frame_id = frame_id
         self.simulated = simulated
 
+        self._box_table = BoxTable(self.frame_id)
         self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().observation.shape,
                                                  dtype=np.float32)
 
@@ -65,20 +67,8 @@ class EmptyWorld(World):
         ----------
 
         """
-        # Add table to moveit
-        pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = self.frame_id
-        pose_stamped.pose.position.x = 0.655
-        pose_stamped.pose.position.y = 0
-
-        # Leave redundant space
-        pose_stamped.pose.position.z = -0.02
-        pose_stamped.pose.orientation.x = 0
-        pose_stamped.pose.orientation.y = 0
-        pose_stamped.pose.orientation.z = 0
-        pose_stamped.pose.orientation.w = 1.0
-
-        self.moveit_scene.add_box('table', pose_stamped, (1.0, 0.9, 0.1))
+        self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
+                                  self._box_table.primitive_attrs['size'])
 
     def close(self):
         """Terminate the empty world
@@ -90,7 +80,7 @@ class EmptyWorld(World):
         ----------
 
         """
-        self.moveit_scene.remove_world_object('table')
+        self.moveit_scene.remove_world_object(self._box_table.name)
 
     def get_observation(self):
         """Get the observation from empty world
