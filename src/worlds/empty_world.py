@@ -18,7 +18,7 @@ from src.objects import BoxTable
 
 class EmptyWorld(World):
     """Empty world class"""
-    def __init__(self, moveit_scene, frame_id, simulated=False):
+    def __init__(self, moveit_scene, frame_id, simulated=True):
         """Users use this to manage world and get world state
 
         Arguments
@@ -29,7 +29,7 @@ class EmptyWorld(World):
         - frame_id: string
             Use this to add/Move/Remove objects in MoveIt!, reference frame
 
-        - simulated: bool
+        - simulated: bool (default = True)
             If simulated
 
         Returns
@@ -68,7 +68,7 @@ class EmptyWorld(World):
 
         """
         self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
-                                  self._box_table.primitive_attrs['size'])
+                                  self._box_table.size)
 
     def close(self):
         """Terminate the empty world

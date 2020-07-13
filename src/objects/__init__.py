@@ -1,3 +1,4 @@
-from src.objects.table import BoxTable
+from src.objects.box_table import BoxTable
+from src.objects.block import Block
 
-__all__ = ['BoxTable']
+__all__ = ['BoxTable', 'Block']
