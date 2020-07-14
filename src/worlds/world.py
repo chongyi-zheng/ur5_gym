@@ -25,3 +25,6 @@ class World(object):
     @property
     def observation_space(self):
         raise NotImplementedError
+
+    def _initialize_world(self):
+        raise NotImplementedError

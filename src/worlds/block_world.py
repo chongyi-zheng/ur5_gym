@@ -16,7 +16,7 @@ import gym
 import numpy as np
 import rospy
 
-from src.objects import Block
+from src.objects import Block, BoxTable
 from src.worlds.world import World
 
 # from sawyer.ros.worlds.gazebo import Gazebo
@@ -35,18 +35,37 @@ from src.worlds.world import World
 
 
 class BlockWorld(World):
+    """Block world"""
     def __init__(self, moveit_scene, frame_id, simulated=False):
-        """
-        Users use this to manage world and get world state.
-        """
-        self._blocks = []
-        self._simulated = simulated
-        self._block_states_subs = []
-        self._moveit_scene = moveit_scene
-        self._frame_id = frame_id
+        """Initialize a BlockWorld object
 
-    def reset(self):
-        if self._simulated:
+        Arguments
+        ----------
+        - moveit_scene: moveit_commander.PlanningSceneInterface
+            Use this to add/Move/Remove objects in MoveIt!
+
+        - frame_id: string
+            Use this to add/Move/Remove objects in MoveIt!, reference frame
+
+        - simulated: bool (default = True)
+            If simulated
+
+        Returns
+        ----------
+
+        """
+        self.moveit_scene = moveit_scene
+        self.frame_id = frame_id
+        self.simulated = simulated
+
+        self._box_table = BoxTable(self.frame_id)
+        self._blocks = []
+        self._block_states_subs = []
+
+        self._initialize_world()
+
+    def _initialize_world(self):
+        if self.simulated:
             Gazebo.load_gazebo_model(
                 'table',
                 Pose(position=Point(x=0.75, y=0.0, z=0.0)),
@@ -67,29 +86,10 @@ class BlockWorld(World):
                                  self._gazebo_update_block_states))
             self._blocks.append(block)
         else:
-            for vicon_topic in VICON_TOPICS:
-                block = Block(
-                    name='block',
-                    initial_pos=(0.5725, 0.1265, 0.90),
-                    random_delta_range=0.15,
-                    resource=vicon_topic)
-                self._block_states_subs.append(
-                    rospy.Subscriber(block.resource, TransformStamped,
-                                     self._vicon_update_block_states))
-                self._blocks.append(block)
+            raise NotImplementedError("Only simulated BlockWorld is available now!")
 
-        # Add table to moveit
-        pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = self._frame_id
-        pose_stamped.pose.position.x = 0.655
-        pose_stamped.pose.position.y = 0
-        # Leave redundant space
-        pose_stamped.pose.position.z = -0.02
-        pose_stamped.pose.orientation.x = 0
-        pose_stamped.pose.orientation.y = 0
-        pose_stamped.pose.orientation.z = 0
-        pose_stamped.pose.orientation.w = 1.0
-        self._moveit_scene.add_box('table', pose_stamped, (1.0, 0.9, 0.1))
+        # add table to moveit
+        self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose, self._box_table.size)
 
     def _gazebo_update_block_states(self, data):
         model_states = data
@@ -111,10 +111,10 @@ class BlockWorld(World):
                 block.orientation = rotation
 
     def reset(self):
-        if self._simulated:
+        if self.simulated:
             self._reset_sim()
         else:
-            self._reset_real()
+            raise NotImplementedError("Only simulated BlockWorld is available now!")
 
     def _reset_sim(self):
         """
@@ -136,32 +136,7 @@ class BlockWorld(World):
                         y=block.initial_pos.y + block_random_delta[1],
                         z=block.initial_pos.z)))
 
-    def _reset_real(self):
-        """
-        reset the real
-        """
-        # randomize start position of blocks
-        for block in self._blocks:
-            block_random_delta = np.zeros(2)
-            new_pos = block.initial_pos
-            while np.linalg.norm(block_random_delta) < 0.1:
-                block_random_delta = np.random.uniform(
-                    -block.random_delta_range,
-                    block.random_delta_range,
-                    size=2)
-            new_pos.x += block_random_delta[0]
-            new_pos.y += block_random_delta[1]
-            logger.log('new position for {} is x = {}, y = {}, z = {}'.format(
-                block.name, new_pos.x, new_pos.y, new_pos.z))
-            ready = False
-            while not ready:
-                ans = input(
-                    'Have you finished setting up {}?[Yes/No]\n'.format(
-                        block.name))
-                if ans.lower() == 'yes' or ans.lower() == 'y':
-                    ready = True
-
-    def terminate(self):
+    def close(self):
         for sub in self._block_states_subs:
             sub.unregister()
 
@@ -176,7 +151,7 @@ class BlockWorld(World):
                 if ans.lower() == 'yes' or ans.lower() == 'y':
                     ready = True
 
-        self._moveit_scene.remove_world_object('table')
+        self.moveit_scene.remove_world_object(self._box_table.name)
 
     def get_observation(self):
         blocks_pos = np.array([])

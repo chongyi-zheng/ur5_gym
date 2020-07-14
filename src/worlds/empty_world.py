@@ -17,9 +17,9 @@ from src.objects import BoxTable
 
 
 class EmptyWorld(World):
-    """Empty world class"""
+    """Empty world"""
     def __init__(self, moveit_scene, frame_id, simulated=True):
-        """Users use this to manage world and get world state
+        """Initialize an EmptyWorld object
 
         Arguments
         ----------
@@ -44,6 +44,21 @@ class EmptyWorld(World):
         self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().observation.shape,
                                                  dtype=np.float32)
 
+        self._initialize_world()
+
+    def _initialize_world(self):
+        """Initialize the empty world
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
+                                  self._box_table.size)
+
     @property
     def observation_space(self):
         """Get observation space of the empty world
@@ -67,8 +82,7 @@ class EmptyWorld(World):
         ----------
 
         """
-        self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
-                                  self._box_table.size)
+        pass
 
     def close(self):
         """Terminate the empty world
