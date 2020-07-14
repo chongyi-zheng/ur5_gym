@@ -40,9 +40,8 @@ class EmptyWorld(World):
         self.frame_id = frame_id
         self.simulated = simulated
 
-        self._box_table = BoxTable(self.frame_id)
-        self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().observation.shape,
-                                                 dtype=np.float32)
+        self._box_table = None
+        self._observation_space = None
 
         self._initialize_world()
 
@@ -56,6 +55,10 @@ class EmptyWorld(World):
         ----------
 
         """
+        self._box_table = BoxTable(self.frame_id)
+        self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().observation.shape,
+                                                 dtype=np.float32)
+
         self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
                                   self._box_table.size)
 

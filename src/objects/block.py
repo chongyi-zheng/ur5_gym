@@ -5,13 +5,20 @@ from src.objects.base import Object
 
 class Block(Object):
     """Block object"""
-    def __init__(self, init_pos, random_delta_range, frame='world', name='block'):
+    def __init__(self, init_pos, random_delta_range, init_ori=None, frame='world', name='block'):
         """Task Object interface
 
         Arguments
         ----------
-        - initial_pos: np.ndarray
+        - init_pos: np.ndarray
             Block's original position
+
+        - random_delta_range: [float, float, float]
+            Positive, the range that would be used in sampling object' new start position for every episode
+            Set it as 0, if you want to keep the block's initial_pos for every episode.
+
+        - init_ori: np.ndarray or None (default = None)
+            Block's original orientation
 
         - frame: str (default = 'world')
             Reference frame of the object pose
@@ -19,19 +26,18 @@ class Block(Object):
         - name: str (default = 'block)
             Name of the block
 
-        - random_delta_range: [float, float, float]
-            Positive, the range that would be used in sampling object' new start position for every episode
-            Set it as 0, if you want to keep the block's initial_pos for every episode.
-
         Returns
         ----------
 
         """
-        Object.__init__(self, init_pos, [0.0, 0.0, 0.0, 1.0], frame, name)
+        if init_ori is None:
+            init_ori = [0.0, 0.0, 0.0, 1.0]
+        Object.__init__(self, init_pos, init_ori, frame, name)
 
         self.random_delta_range = random_delta_range
 
         self._position = copy.deepcopy(init_pos)
+        self._orientation = copy.deepcopy(init_ori)
 
     @property
     def position(self):
@@ -40,3 +46,11 @@ class Block(Object):
     @position.setter
     def position(self, value):
         self._position = value
+
+    @property
+    def orientation(self):
+        return self._orientation
+
+    @orientation.setter
+    def orientation(self, value):
+        self._orientation = value

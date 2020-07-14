@@ -9,9 +9,10 @@ Based on https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/worlds
 import collections
 import os.path as osp
 
-from gazebo_msgs.msg import ModelStates
+# from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, \
     TransformStamped
+from mujoco_ros_msgs.msg import ModelStates
 import gym
 import numpy as np
 import rospy
@@ -36,7 +37,7 @@ from src.worlds.world import World
 
 class BlockWorld(World):
     """Block world"""
-    def __init__(self, moveit_scene, frame_id, simulated=False):
+    def __init__(self, moveit_scene, frame_id, simulated=False, resources=None):
         """Initialize a BlockWorld object
 
         Arguments
@@ -50,6 +51,8 @@ class BlockWorld(World):
         - simulated: bool (default = True)
             If simulated
 
+        - resources:
+
         Returns
         ----------
 
@@ -58,57 +61,62 @@ class BlockWorld(World):
         self.frame_id = frame_id
         self.simulated = simulated
 
-        self._box_table = BoxTable(self.frame_id)
-        self._blocks = []
-        self._block_states_subs = []
+        self._box_table = None
+        self._block = None
+        self._model_states_sub = None
+        # self._blocks = []
+        # self._block_states_subs = []
 
         self._initialize_world()
 
     def _initialize_world(self):
         if self.simulated:
-            Gazebo.load_gazebo_model(
-                'table',
-                Pose(position=Point(x=0.75, y=0.0, z=0.0)),
-                osp.join(World.MODEL_DIR, 'cafe_table/model.sdf'))
-            Gazebo.load_gazebo_model(
-                'block',
-                Pose(position=Point(x=0.5725, y=0.1265, z=0.90)),
-                osp.join(World.MODEL_DIR, 'block/model.urdf'))
-            block = Block(
-                name='block',
-                initial_pos=(0.5725, 0.1265, 0.90),
-                random_delta_range=0.15,
-                resource=osp.join(World.MODEL_DIR, 'block/model.urdf'))
+            # Gazebo.load_gazebo_model(
+            #     'table',
+            #     Pose(position=Point(x=0.75, y=0.0, z=0.0)),
+            #     osp.join(World.MODEL_DIR, 'cafe_table/model.sdf'))
+            # Gazebo.load_gazebo_model(
+            #     'block',
+            #     Pose(position=Point(x=0.5725, y=0.1265, z=0.90)),
+            #     osp.join(World.MODEL_DIR, 'block/model.urdf'))
+            self._block = Block(name='block', init_pos=(0.5725, 0.1265, 0.90), random_delta_range=0.15)
             # Waiting models to be loaded
-            rospy.sleep(1)
-            self._block_states_subs.append(
-                rospy.Subscriber('/gazebo/model_states', ModelStates,
-                                 self._gazebo_update_block_states))
-            self._blocks.append(block)
+            # rospy.sleep(1)
+            # self._block_states_subs.append(
+            #     rospy.Subscriber('/gazebo/model_states', ModelStates,
+            #                      self._update_block_states))
+            # self._blocks.append(block)
+            self._model_states_sub = rospy.Subscriber('/mujoco/model_states', ModelStates, self._update_block_states)
         else:
             raise NotImplementedError("Only simulated BlockWorld is available now!")
+
+        self._box_table = BoxTable(self.frame_id)
 
         # add table to moveit
         self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose, self._box_table.size)
 
-    def _gazebo_update_block_states(self, data):
-        model_states = data
+    def _update_block_states(self, model_states):
         model_names = model_states.name
-        for block in self._blocks:
-            block_idx = model_names.index(block.name)
-            block_pose = model_states.pose[block_idx]
-            block.position = block_pose.position
-            block.orientation = block_pose.orientation
+        block_idx = model_names.index(self._block.name)
+        block_pose = model_states.pose[block_idx]
+        self._block.position = block_pose.position
+        self._block.orientation = block_pose.orientation
 
-    def _vicon_update_block_states(self, data):
-        translation = data.transform.translation
-        rotation = data.transform.rotation
-        child_frame_id = data.child_frame_id
+        # for block in self._blocks:
+        #     block_idx = model_names.index(block.name)
+        #     block_pose = model_states.pose[block_idx]
+        #     block.position = block_pose.position
+        #     block.orientation = block_pose.orientation
 
-        for block in self._blocks:
-            if block.resource == child_frame_id:
-                block.position = translation
-                block.orientation = rotation
+    # def _vicon_update_block_states(self, data):
+    #     translation = data.transform.translation
+    #     rotation = data.transform.rotation
+    #     child_frame_id = data.child_frame_id
+    #
+    #     for block in self._blocks:
+    #         if block.resource == child_frame_id:
+    #             block.position = translation
+    #             block.orientation = rotation
 
     def reset(self):
         if self.simulated:
