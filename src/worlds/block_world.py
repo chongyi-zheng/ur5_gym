@@ -92,7 +92,7 @@ class BlockWorld(World):
             #     'block',
             #     Pose(position=Point(x=0.5725, y=0.1265, z=0.90)),
             #     osp.join(World.MODEL_DIR, 'block/model.urdf'))
-            self._block = Block(name='block', init_pos=BLOCK_INIT_POS, random_delta_range=0.15)
+            self._block = Block(name='block', init_pos=BLOCK_INIT_POS, random_delta_range=[0.15, 0.15])
             # Waiting models to be loaded
             # rospy.sleep(1)
             # self._block_states_subs.append(
@@ -152,7 +152,18 @@ class BlockWorld(World):
         ----------
 
         """
-        # Randomize start position of blocks
+        # randomize start position of blocks
+        block_random_delta = np.zeros(2)
+        while np.linalg.norm(block_random_delta) < 0.1:
+            block_random_delta = np.random.uniform(-self._block.random_delta_range[:2],
+                                                   self._block.random_delta_range[:2], size=2)
+        self._block.set_pose(Pose(
+            position=Point(
+                x=self._block.init_pos[0] + block_random_delta[0],
+                y=self._block.init_pos[1] + block_random_delta[1],
+                z=self._block.init_pos[2])
+        ))
+
         # for block in self._blocks:
         #     block_random_delta = np.zeros(2)
         #     while np.linalg.norm(block_random_delta) < 0.1:

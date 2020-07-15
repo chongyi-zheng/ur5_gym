@@ -13,7 +13,7 @@ class Block(Object):
         - init_pos: np.ndarray
             Block's original position
 
-        - random_delta_range: [float, float, float]
+        - random_delta_range: [float, ...]
             Positive, the range that would be used in sampling object' new start position for every episode
             Set it as 0, if you want to keep the block's initial_pos for every episode.
 
