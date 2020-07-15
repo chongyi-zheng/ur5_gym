@@ -2,22 +2,23 @@
 
 Reacher task for the UR5 robot
 
-Adapt from https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/envs/sawyer/reacher_env.py
+Adapt from https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/envs/sawyer/pick_and_place_env.py
 
 """
 import numpy as np
 import moveit_commander
 
 from src.envs.ur5 import UR5Env
-from src.worlds import EmptyWorld
+from src.worlds import BlockWorld
 from src.core.serializable import Serializable
 
 
-class ReacherEnv(UR5Env, Serializable):
-    """Reacher environment"""
+class PickAndPlaceEnv(UR5Env, Serializable):
+    """Pick and place environment"""
     def __init__(self, initial_goal, initial_joint_pos, sparse_reward=True, simulated=True, distance_threshold=0.05,
-                 target_range=0.15, robot_group_name='manipulator', robot_control_mode='position'):
-        """Initialize a ReacherEnv object
+                 target_range=0.15, robot_group_name='manipulator', robot_control_mode='position',
+                 block_state_topic_name='/mujoco/model_states'):
+        """Initialize a PickAndPlaceEnv object
 
         Arguments
         ----------
@@ -45,18 +46,23 @@ class ReacherEnv(UR5Env, Serializable):
         - robot_control_mode: str (default = 'position')
             Robot control mode, only position control is available now
 
+        - block_state_topic_name: str (default = '/mujoco/model_states')
+            Topic name to get the block state for simulated and real robot
+
         Returns
         ----------
 
         """
         Serializable.quick_init(self, locals())
-        super(ReacherEnv, self).__init__(initial_goal, initial_joint_pos, sparse_reward, distance_threshold,
-                                         robot_group_name, robot_control_mode)
+        super(PickAndPlaceEnv, self).__init__(initial_goal, initial_joint_pos, sparse_reward, distance_threshold,
+                                              robot_group_name, robot_control_mode)
         self.target_range = target_range
         self.simulated = simulated
+        self.block_state_topic_name = block_state_topic_name
 
         self._moveit_scene = moveit_commander.PlanningSceneInterface()
-        self._world = EmptyWorld(self._moveit_scene, self._robot.moveit_robot.get_planning_frame(), self.simulated)
+        self._world = BlockWorld(self._moveit_scene, self._robot.moveit_robot.get_planning_frame(),
+                                 simulated=self.simulated, resource=self.block_state_topic_name)
 
     def _sample_goal(self):
         """Sample a random goal position
@@ -90,7 +96,7 @@ class ReacherEnv(UR5Env, Serializable):
             The initial observation of the task
 
         """
-        initial_observation = super(ReacherEnv, self).reset()
+        initial_observation = super(PickAndPlaceEnv, self).reset()
         self._world.reset()
 
         return initial_observation

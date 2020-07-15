@@ -8,7 +8,6 @@ Based on https://github.com/rlworkgroup/gym-sawyer/blob/master/sawyer/ros/worlds
 
 import collections
 
-from geometry_msgs.msg import PoseStamped
 import gym
 import numpy as np
 
@@ -55,10 +54,10 @@ class EmptyWorld(World):
         ----------
 
         """
-        self._box_table = BoxTable(self.frame_id)
         self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().observation.shape,
                                                  dtype=np.float32)
 
+        self._box_table = BoxTable(self.frame_id)
         self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose,
                                   self._box_table.size)
 
@@ -108,7 +107,6 @@ class EmptyWorld(World):
         Returns
         ----------
         - obs: {observation: }
-
 
         """
         achieved_goal = np.array([])

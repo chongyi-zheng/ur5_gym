@@ -34,10 +34,12 @@ from src.worlds.world import World
 #         "   # if you are not using real robot and vicon system"
 #         "   VICON_TOPICS = []")
 
+BLOCK_INIT_POS = [0.6, 0.0, 0.9]  # from XML
+
 
 class BlockWorld(World):
     """Block world"""
-    def __init__(self, moveit_scene, frame_id, simulated=False, resources=None):
+    def __init__(self, moveit_scene, frame_id, simulated=False, resource='/mujoco/model_states'):
         """Initialize a BlockWorld object
 
         Arguments
@@ -51,7 +53,8 @@ class BlockWorld(World):
         - simulated: bool (default = True)
             If simulated
 
-        - resources:
+        - resource: str or None (default = None)
+            ROS topic name for simulated and real block state
 
         Returns
         ----------
@@ -60,6 +63,7 @@ class BlockWorld(World):
         self.moveit_scene = moveit_scene
         self.frame_id = frame_id
         self.simulated = simulated
+        self.resource = resource
 
         self._box_table = None
         self._block = None
@@ -70,6 +74,15 @@ class BlockWorld(World):
         self._initialize_world()
 
     def _initialize_world(self):
+        """Initialize the block world
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
         if self.simulated:
             # Gazebo.load_gazebo_model(
             #     'table',
@@ -79,23 +92,34 @@ class BlockWorld(World):
             #     'block',
             #     Pose(position=Point(x=0.5725, y=0.1265, z=0.90)),
             #     osp.join(World.MODEL_DIR, 'block/model.urdf'))
-            self._block = Block(name='block', init_pos=(0.5725, 0.1265, 0.90), random_delta_range=0.15)
+            self._block = Block(name='block', init_pos=BLOCK_INIT_POS, random_delta_range=0.15)
             # Waiting models to be loaded
             # rospy.sleep(1)
             # self._block_states_subs.append(
             #     rospy.Subscriber('/gazebo/model_states', ModelStates,
             #                      self._update_block_states))
             # self._blocks.append(block)
-            self._model_states_sub = rospy.Subscriber('/mujoco/model_states', ModelStates, self._update_block_states)
+            self._model_states_sub = rospy.Subscriber(self.resource, ModelStates, self._update_block_states)
         else:
             raise NotImplementedError("Only simulated BlockWorld is available now!")
 
-        self._box_table = BoxTable(self.frame_id)
+        self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().obs.shape,
+                                                 dtype=np.float32)
 
         # add table to moveit
+        self._box_table = BoxTable(self.frame_id)
         self.moveit_scene.add_box(self._box_table.name, self._box_table.init_pose, self._box_table.size)
 
     def _update_block_states(self, model_states):
+        """Read block state from simulated or real robot
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
         model_names = model_states.name
         block_idx = model_names.index(self._block.name)
         block_pose = model_states.pose[block_idx]
@@ -118,40 +142,77 @@ class BlockWorld(World):
     #             block.position = translation
     #             block.orientation = rotation
 
+    def _reset_sim(self):
+        """Reset the simulation
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        # Randomize start position of blocks
+        # for block in self._blocks:
+        #     block_random_delta = np.zeros(2)
+        #     while np.linalg.norm(block_random_delta) < 0.1:
+        #         block_random_delta = np.random.uniform(
+        #             -block.random_delta_range,
+        #             block.random_delta_range,
+        #             size=2)
+        #     Gazebo.set_model_pose(
+        #         block.name,
+        #         new_pose=Pose(
+        #             position=Point(
+        #                 x=block.initial_pos.x + block_random_delta[0],
+        #                 y=block.initial_pos.y + block_random_delta[1],
+        #                 z=block.initial_pos.z)))
+
+    @property
+    def observation_space(self):
+        """Get observation space of the empty world
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        return self._observation_space
+
     def reset(self):
+        """Reset the block world
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
         if self.simulated:
             self._reset_sim()
         else:
             raise NotImplementedError("Only simulated BlockWorld is available now!")
 
-    def _reset_sim(self):
-        """
-        reset the simulation
-        """
-        # Randomize start position of blocks
-        for block in self._blocks:
-            block_random_delta = np.zeros(2)
-            while np.linalg.norm(block_random_delta) < 0.1:
-                block_random_delta = np.random.uniform(
-                    -block.random_delta_range,
-                    block.random_delta_range,
-                    size=2)
-            Gazebo.set_model_pose(
-                block.name,
-                new_pose=Pose(
-                    position=Point(
-                        x=block.initial_pos.x + block_random_delta[0],
-                        y=block.initial_pos.y + block_random_delta[1],
-                        z=block.initial_pos.z)))
-
     def close(self):
-        for sub in self._block_states_subs:
-            sub.unregister()
+        """Terminate the empty world
 
-        if self._simulated:
-            for block in self._blocks:
-                Gazebo.delete_gazebo_model(block.name)
-            Gazebo.delete_gazebo_model('table')
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        self._model_states_sub.unregister()
+
+        if self.simulated:
+            # for block in self._blocks:
+            #     Gazebo.delete_gazebo_model(block.name)
+            # Gazebo.delete_gazebo_model('table')
+            pass
         else:
             ready = False
             while not ready:
@@ -162,22 +223,22 @@ class BlockWorld(World):
         self.moveit_scene.remove_world_object(self._box_table.name)
 
     def get_observation(self):
-        blocks_pos = np.array([])
-        blocks_ori = np.array([])
+        """Get the observation from empty world
 
-        for block in self._blocks:
-            pos = np.array(
-                [block.position.x, block.position.y, block.position.z])
-            ori = np.array([
-                block.orientation.x, block.orientation.y, block.orientation.z,
-                block.orientation.w
-            ])
-            blocks_pos = np.concatenate((blocks_pos, pos))
-            blocks_ori = np.concatenate((blocks_ori, ori))
+        Arguments
+        ----------
 
-        achieved_goal = np.squeeze(blocks_pos)
+        Returns
+        ----------
+        - obs: {observation: }
 
-        obs = np.concatenate((blocks_pos, blocks_ori))
+        """
+        block_pos = np.array([self._block.position.x, self._block.position.y, self._block.position.z])
+        block_ori = np.array([self._block.orientation.x, self._block.orientation.y, self._block.orientation.z,
+                              self._block.orientation.w])
+
+        achieved_goal = np.squeeze(block_pos)
+        obs = np.concatenate([block_pos, block_ori])
 
         Observation = collections.namedtuple('Observation',
                                              'obs achieved_goal')
@@ -186,22 +247,14 @@ class BlockWorld(World):
 
         return observation
 
-    @property
-    def observation_space(self):
-        return gym.spaces.Box(
-            -np.inf,
-            np.inf,
-            shape=self.get_observation().obs.shape,
-            dtype=np.float32)
-
-    def add_block(self, block):
-        if self._simulated:
-            Gazebo.load_gazebo_model(
-                block.name, Pose(position=block.initial_pos), block.resource)
-            # Waiting model to be loaded
-            rospy.sleep(1)
-        else:
-            self._block_states_subs.append(
-                rospy.Subscriber(block.resource, TransformStamped,
-                                 self._vicon_update_block_states))
-        self._blocks.append(block)
+    # def add_block(self, block):
+    #     if self._simulated:
+    #         Gazebo.load_gazebo_model(
+    #             block.name, Pose(position=block.initial_pos), block.resource)
+    #         # Waiting model to be loaded
+    #         rospy.sleep(1)
+    #     else:
+    #         self._block_states_subs.append(
+    #             rospy.Subscriber(block.resource, TransformStamped,
+    #                              self._vicon_update_block_states))
+    #     self._blocks.append(block)

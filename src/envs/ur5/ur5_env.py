@@ -184,7 +184,7 @@ class UR5Env(gym.Env):
 
         obs = self._get_observation()
 
-        observation = obs.observation
+        observation = obs
         reward = self.compute_reward(obs.achieved_goal, self._goal)
         done = not self._robot.safety_check()  # done = True iff robot is in collision state
         info = {
