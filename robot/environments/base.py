@@ -4,12 +4,53 @@ from mujoco_py import load_model_from_xml
 
 from robosuite.utils import SimulationError, XMLError, MujocoPyRenderer
 
+REGISTERED_ENVS = {}
+
+
+def register_env(target_class):
+    REGISTERED_ENVS[target_class.__name__] = target_class
+
+
+def make(env_name, *args, **kwargs):
+    """
+    Instantiates a robosuite environment.
+    This method attempts to mirror the equivalent functionality of gym.make in a somewhat sloppy way.
+    Args:
+        env_name (str): Name of the robosuite environment to initialize
+        *args: Additional arguments to pass to the specific environment class initializer
+        **kwargs: Additional arguments to pass to the specific environment class initializer
+    Returns:
+        MujocoEnv: Desired robosuite environment
+    Raises:
+        Exception: [Invalid environment name]
+    """
+    if env_name not in REGISTERED_ENVS:
+        raise Exception(
+            "Environment {} not found. Make sure it is a registered environment among: {}".format(
+                env_name, ", ".join(REGISTERED_ENVS)
+            )
+        )
+    return REGISTERED_ENVS[env_name](*args, **kwargs)
+
+
+class EnvMeta(type):
+    """Metaclass for registering environments"""
+
+    def __new__(meta, name, bases, class_dict):
+        cls = super().__new__(meta, name, bases, class_dict)
+
+        # List all environments that should not be registered here.
+        _unregistered_envs = ["MujocoEnv", "RobotEnv"]
+
+        if cls.__name__ not in _unregistered_envs:
+            register_env(cls)
+        return cls
+
 
 class MujocoEnv(metaclass=EnvMeta):
     """
     Initializes a Mujoco Environment.
     Args:
-        has_renderer (bool): If true, render the simulation state in
         has_renderer (bool): If true, render the simulation state in
             a viewer instead of headless mode.
         has_offscreen_renderer (bool): True if using off-screen rendering.
@@ -32,16 +73,16 @@ class MujocoEnv(metaclass=EnvMeta):
     """
 
     def __init__(
-        self,
-        has_renderer=False,
-        has_offscreen_renderer=True,
-        render_camera="frontview",
-        render_collision_mesh=False,
-        render_visual_mesh=True,
-        control_freq=10,
-        horizon=1000,
-        ignore_done=False,
-        hard_reset=True
+            self,
+            has_renderer=False,
+            has_offscreen_renderer=True,
+            render_camera="frontview",
+            render_collision_mesh=False,
+            render_visual_mesh=True,
+            control_freq=10,
+            horizon=1000,
+            ignore_done=False,
+            hard_reset=True
     ):
         # First, verify that both the on- and off-screen renderers are not being used simultaneously
         if has_renderer is True and has_offscreen_renderer is True:
