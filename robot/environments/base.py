@@ -1,8 +1,11 @@
 from collections import OrderedDict
-from mujoco_py import MjSim, MjRenderContextOffscreen
-from mujoco_py import load_model_from_xml
+# from mujoco_py import MjSim, MjRenderContextOffscreen
+# from mujoco_py import load_model_from_xml
 
 from robosuite.utils import SimulationError, XMLError, MujocoPyRenderer
+
+import rospy
+import rosgraph
 
 REGISTERED_ENVS = {}
 
@@ -145,7 +148,7 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         pass
 
-    def _initialize_sim(self, xml_string=None):
+    def _initialize_sim(self, xml_string=None, ros_xml_param_name='mujoco_model_xml'):
         """
         Creates a MjSim object and stores it in self.sim. If @xml_string is specified, the MjSim object will be created
         from the specified xml_string. Else, it will pull from self.model to instantiate the simulation
@@ -153,11 +156,17 @@ class MujocoEnv(metaclass=EnvMeta):
             xml_string (str): If specified, creates MjSim object from this filepath
         """
         # if we have an xml string, use that to create the sim. Otherwise, use the local model
-        self.mjpy_model = load_model_from_xml(xml_string) if xml_string else self.model.get_model(mode="mujoco_py")
+        # self.mjpy_model = load_model_from_xml(xml_string) if xml_string else self.model.get_model(mode="mujoco_py")
+        xml_string = xml_string if xml_string else self.model.get_xml()
+
+        if rosgraph.is_master_online():
+            rospy.set_param(ros_xml_param_name, xml_string)
+        else:
+            raise SystemError("ROS master is not running!")
 
         # Create the simulation instance and run a single step to make sure changes have propagated through sim state
-        self.sim = MjSim(self.mjpy_model)
-        self.sim.step()
+        # self.sim = MjSim(self.mjpy_model)
+        # self.sim.step()
 
         # Setup sim time based on control frequency
         self.initialize_time(self.control_freq)

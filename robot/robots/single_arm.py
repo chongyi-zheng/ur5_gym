@@ -7,7 +7,9 @@ import robosuite.utils.transform_utils as T
 from robosuite.models.grippers import gripper_factory
 from robosuite.controllers import controller_factory, load_controller_config
 
-from robosuite.robots.robot import Robot
+# TODO (chongyi zheng)
+# from robosuite.robots.robot import Robot
+from robot.robots.robot import Robot
 from robosuite.utils.control_utils import DeltaBuffer, RingBuffer
 
 import os

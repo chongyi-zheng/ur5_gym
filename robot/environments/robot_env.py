@@ -5,7 +5,7 @@ import numpy as np
 from robot.environments.base import MujocoEnv
 
 # from robosuite.robots.single_arm import SingleArm
-from robosuite.robots.single_arm import SingleArm
+from robot.robots.single_arm import SingleArm
 from robosuite.robots.bimanual import Bimanual
 from robosuite.models.robots import check_bimanual
 
