@@ -212,20 +212,25 @@ class SingleArm(Robot):
         # indices for grippers in qpos, qvel
         if self.has_gripper:
             self.gripper_joints = list(self.gripper.joints)
-            self._ref_gripper_joint_pos_indexes = [
-                self.sim.model.get_joint_qpos_addr(x) for x in self.gripper_joints
-            ]
-            self._ref_gripper_joint_vel_indexes = [
-                self.sim.model.get_joint_qvel_addr(x) for x in self.gripper_joints
-            ]
-            self._ref_joint_gripper_actuator_indexes = [
-                self.sim.model.actuator_name2id(actuator)
-                for actuator in self.gripper.actuators
-            ]
+            # self._ref_gripper_joint_pos_indexes = [
+            #     self.sim.model.get_joint_qpos_addr(x) for x in self.gripper_joints
+            # ]
+            # self._ref_gripper_joint_vel_indexes = [
+            #     self.sim.model.get_joint_qvel_addr(x) for x in self.gripper_joints
+            # ]
+            # self._ref_joint_gripper_actuator_indexes = [
+            #     self.sim.model.actuator_name2id(actuator)
+            #     for actuator in self.gripper.actuators
+            # ]
+            self._ref_gripper_joint_pos_indexes = self.sim.joint_pos_indexes(self.gripper_joints)
+            self._ref_gripper_joint_vel_indexes = self.sim.joint_vel_indexes(self.gripper_joints)
+            self._ref_joint_gripper_actuator_indexes = self.sim.actuator_name2id(self.gripper.actuators)
 
         # IDs of sites for eef visualization
-        self.eef_site_id = self.sim.model.site_name2id(self.gripper.visualization_sites["grip_site"])
-        self.eef_cylinder_id = self.sim.model.site_name2id(self.gripper.visualization_sites["grip_cylinder"])
+        # self.eef_site_id = self.sim.model.site_name2id(self.gripper.visualization_sites["grip_site"])
+        # self.eef_cylinder_id = self.sim.model.site_name2id(self.gripper.visualization_sites["grip_cylinder"])
+        self.eef_site_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_site"])
+        self.eef_cylinder_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_cylinder"])
 
     def control(self, action, policy_step=False):
         """

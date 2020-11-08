@@ -5,7 +5,9 @@ import robosuite.utils.transform_utils as T
 
 from mujoco_py import MjSim
 
-from robosuite.models.robots import create_robot
+# TODO (chongyi zheng): this line has been modified
+# from robosuite.models.robots import create_robot
+from robot.models.robots import create_robot
 
 
 class Robot(object):
@@ -112,7 +114,7 @@ class Robot(object):
             else:
                 raise ValueError("Error: Invalid noise type specified. Options are 'gaussian' or 'uniform'.")
             init_qpos += noise
-
+        # TODO (chongyi zheng): move to initial position with moveit_commander!
         # Set initial position in sim
         self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
 
@@ -129,34 +131,44 @@ class Robot(object):
         """
         # indices for joints in qpos, qvel
         self.robot_joints = self.robot_model.joints
-        self._ref_joint_pos_indexes = [
-            self.sim.model.get_joint_qpos_addr(x) for x in self.robot_joints
-        ]
-        self._ref_joint_vel_indexes = [
-            self.sim.model.get_joint_qvel_addr(x) for x in self.robot_joints
-        ]
+        # TODO (chongyi zheng): delete commented code below
+        # self._ref_joint_pos_indexes = [
+        #     self.sim.model.get_joint_qpos_addr(x) for x in self.robot_joints
+        # ]
+        # self._ref_joint_vel_indexes = [
+        #     self.sim.model.get_joint_qvel_addr(x) for x in self.robot_joints
+        # ]
+        self._ref_joint_pos_indexes = self.sim.joint_pos_indexes(self.robot_joints)
+        self._ref_joint_vel_indexes = self.sim.joint_vel_indexes(self.robot_joints)
 
         # indices for joint indexes
-        self._ref_joint_indexes = [
-            self.sim.model.joint_name2id(joint)
-            for joint in self.robot_model.joints
-        ]
+        # self._ref_joint_indexes = [
+        #     self.sim.model.joint_name2id(joint)
+        #     for joint in self.robot_model.joints
+        # ]
+        self._ref_joint_indexes = self.sim.joint_name2id(self.robot_joints)
 
         # indices for joint pos actuation, joint vel actuation, gripper actuation
-        self._ref_joint_pos_actuator_indexes = [
-            self.sim.model.actuator_name2id(actuator)
-            for actuator in self.robot_model.actuators["pos"]
-        ]
+        # self._ref_joint_pos_actuator_indexes = [
+        #     self.sim.model.actuator_name2id(actuator)
+        #     for actuator in self.robot_model.actuators["pos"]
+        # ]
+        self._ref_joint_pos_actuator_indexes = self.sim.actuator_name2id(
+            [actuator for actuator in self.robot_model.actuators["pos"]])
 
-        self._ref_joint_vel_actuator_indexes = [
-            self.sim.model.actuator_name2id(actuator)
-            for actuator in self.robot_model.actuators["vel"]
-        ]
+        # self._ref_joint_vel_actuator_indexes = [
+        #     self.sim.model.actuator_name2id(actuator)
+        #     for actuator in self.robot_model.actuators["vel"]
+        # ]
+        self._ref_joint_pos_actuator_indexes = self.sim.actuator_name2id(
+            [actuator for actuator in self.robot_model.actuators["vel"]])
 
-        self._ref_joint_torq_actuator_indexes = [
-            self.sim.model.actuator_name2id(actuator)
-            for actuator in self.robot_model.actuators["torq"]
-        ]
+        # self._ref_joint_torq_actuator_indexes = [
+        #     self.sim.model.actuator_name2id(actuator)
+        #     for actuator in self.robot_model.actuators["torq"]
+        # ]
+        self._ref_joint_pos_actuator_indexes = self.sim.actuator_name2id(
+            [actuator for actuator in self.robot_model.actuators["torq"]])
 
     def control(self, action, policy_step=False):
         """

@@ -3,6 +3,7 @@ from collections import OrderedDict
 # from mujoco_py import load_model_from_xml
 
 from robosuite.utils import SimulationError, XMLError, MujocoPyRenderer
+from robot.environments.mujoco_ros import MujocoROS
 
 import rospy
 import rosgraph
@@ -126,7 +127,7 @@ class MujocoEnv(metaclass=EnvMeta):
             control_freq (float): Hz rate to run control loop at within the simulation
         """
         self.cur_time = 0
-        self.model_timestep = self.sim.model.opt.timestep
+        self.model_timestep = self.sim.timestep
         if self.model_timestep <= 0:
             raise XMLError("xml model defined non-positive time step")
         self.control_freq = control_freq
@@ -159,14 +160,16 @@ class MujocoEnv(metaclass=EnvMeta):
         # self.mjpy_model = load_model_from_xml(xml_string) if xml_string else self.model.get_model(mode="mujoco_py")
         xml_string = xml_string if xml_string else self.model.get_xml()
 
-        if rosgraph.is_master_online():
-            rospy.set_param(ros_xml_param_name, xml_string)
-        else:
-            raise SystemError("ROS master is not running!")
+        # TODO (chongyi zheng): Do we need to load xml_string?
+        # if rosgraph.is_master_online():
+        #     rospy.set_param(ros_xml_param_name, xml_string)
+        # else:
+        #     raise SystemError("ROS master is not running!")
 
         # Create the simulation instance and run a single step to make sure changes have propagated through sim state
         # self.sim = MjSim(self.mjpy_model)
         # self.sim.step()
+        self.sim = MujocoROS('ur5e_robotiq_2f_85_mujoco_ros')
 
         # Setup sim time based on control frequency
         self.initialize_time(self.control_freq)
@@ -194,32 +197,33 @@ class MujocoEnv(metaclass=EnvMeta):
     def _reset_internal(self):
         """Resets simulation internal configurations."""
 
-        # create visualization screen or renderer
-        if self.has_renderer and self.viewer is None:
-            self.viewer = MujocoPyRenderer(self.sim)
-            self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-            self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
-
-            # hiding the overlay speeds up rendering significantly
-            self.viewer.viewer._hide_overlay = True
-
-            # make sure mujoco-py doesn't block rendering frames
-            # (see https://github.com/StanfordVL/robosuite/issues/39)
-            self.viewer.viewer._render_every_frame = True
-
-            # Set the camera angle for viewing
-            if self.render_camera is not None:
-                self.viewer.set_camera(camera_id=self.sim.model.camera_name2id(self.render_camera))
-
-        elif self.has_offscreen_renderer:
-            if self.sim._render_context_offscreen is None:
-                render_context = MjRenderContextOffscreen(self.sim)
-                self.sim.add_render_context(render_context)
-            self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-            self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+        # TODO (chongyi zheng): delete viewer cause we cannot do this with real robot?
+        # # create visualization screen or renderer
+        # if self.has_renderer and self.viewer is None:
+        #     self.viewer = MujocoPyRenderer(self.sim)
+        #     self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+        #     self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+        #
+        #     # hiding the overlay speeds up rendering significantly
+        #     self.viewer.viewer._hide_overlay = True
+        #
+        #     # make sure mujoco-py doesn't block rendering frames
+        #     # (see https://github.com/StanfordVL/robosuite/issues/39)
+        #     self.viewer.viewer._render_every_frame = True
+        #
+        #     # Set the camera angle for viewing
+        #     if self.render_camera is not None:
+        #         self.viewer.set_camera(camera_id=self.sim.model.camera_name2id(self.render_camera))
+        #
+        # elif self.has_offscreen_renderer:
+        #     if self.sim._render_context_offscreen is None:
+        #         render_context = MjRenderContextOffscreen(self.sim)
+        #         self.sim.add_render_context(render_context)
+        #     self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+        #     self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
 
         # additional housekeeping
-        self.sim_state_initial = self.sim.get_state()
+        # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless
         self._get_reference()
         self.cur_time = 0
         self.timestep = 0

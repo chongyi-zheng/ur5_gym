@@ -266,15 +266,19 @@ class RobotEnv(MujocoEnv):
             robot.reset_sim(self.sim)
             robot.setup_references()
 
+        # TODO (chongyi zheng): delete commented code below
         # Indicator object references
         if self.use_indicator_object:
-            ind_qpos = self.sim.model.get_joint_qpos_addr("pos_indicator")
+            # ind_qpos = self.sim.model.get_joint_qpos_addr("pos_indicator")
+            ind_qpos = self.sim.joint_pos_indexes("pos_indicator")
             self._ref_indicator_pos_low, self._ref_indicator_pos_high = ind_qpos
 
-            ind_qvel = self.sim.model.get_joint_qvel_addr("pos_indicator")
+            # ind_qvel = self.sim.model.get_joint_qvel_addr("pos_indicator")
+            ind_qvel = self.sim.joint_vel_indexes("pos_indicator")
             self._ref_indicator_vel_low, self._ref_indicator_vel_high = ind_qvel
 
-            self.indicator_id = self.sim.model.body_name2id("pos_indicator")
+            # self.indicator_id = self.sim.model.body_name2id("pos_indicator")
+            self.indicator_id = self.sim.body_name2id("pos_indicator")
 
     def _reset_internal(self):
         """
@@ -294,34 +298,35 @@ class RobotEnv(MujocoEnv):
             robot.reset(deterministic=self.deterministic_reset)
             self._action_dim += robot.action_dim
 
+        # TODO (chongyi zheng): Do we need cameras?
         # Update cameras if appropriate
-        if self.use_camera_obs:
-            temp_names = []
-            for cam_name in self.camera_names:
-                if "all-" in cam_name:
-                    # We need to add all robot-specific camera names that include the key after the tag "all-"
-                    start_idx = len(temp_names) - 1
-                    key = cam_name.replace("all-", "")
-                    for robot in self.robots:
-                        for robot_cam_name in robot.robot_model.cameras:
-                            if key in robot_cam_name:
-                                temp_names.append(robot_cam_name)
-                    # We also need to broadcast the corresponding values from each camera dimensions as well
-                    end_idx = len(temp_names) - 1
-                    self.camera_widths = self.camera_widths[:start_idx] + \
-                                         [self.camera_widths[start_idx]] * (end_idx - start_idx) + \
-                                         self.camera_widths[(start_idx + 1):]
-                    self.camera_heights = self.camera_heights[:start_idx] + \
-                                          [self.camera_heights[start_idx]] * (end_idx - start_idx) + \
-                                          self.camera_heights[(start_idx + 1):]
-                    self.camera_depths = self.camera_depths[:start_idx] + \
-                                         [self.camera_depths[start_idx]] * (end_idx - start_idx) + \
-                                         self.camera_depths[(start_idx + 1):]
-                else:
-                    # We simply add this camera to the temp_names
-                    temp_names.append(cam_name)
-            # Lastly, replace camera names with the updated ones
-            self.camera_names = temp_names
+        # if self.use_camera_obs:
+        #     temp_names = []
+        #     for cam_name in self.camera_names:
+        #         if "all-" in cam_name:
+        #             # We need to add all robot-specific camera names that include the key after the tag "all-"
+        #             start_idx = len(temp_names) - 1
+        #             key = cam_name.replace("all-", "")
+        #             for robot in self.robots:
+        #                 for robot_cam_name in robot.robot_model.cameras:
+        #                     if key in robot_cam_name:
+        #                         temp_names.append(robot_cam_name)
+        #             # We also need to broadcast the corresponding values from each camera dimensions as well
+        #             end_idx = len(temp_names) - 1
+        #             self.camera_widths = self.camera_widths[:start_idx] + \
+        #                                  [self.camera_widths[start_idx]] * (end_idx - start_idx) + \
+        #                                  self.camera_widths[(start_idx + 1):]
+        #             self.camera_heights = self.camera_heights[:start_idx] + \
+        #                                   [self.camera_heights[start_idx]] * (end_idx - start_idx) + \
+        #                                   self.camera_heights[(start_idx + 1):]
+        #             self.camera_depths = self.camera_depths[:start_idx] + \
+        #                                  [self.camera_depths[start_idx]] * (end_idx - start_idx) + \
+        #                                  self.camera_depths[(start_idx + 1):]
+        #         else:
+        #             # We simply add this camera to the temp_names
+        #             temp_names.append(cam_name)
+        #     # Lastly, replace camera names with the updated ones
+        #     self.camera_names = temp_names
 
     def _pre_action(self, action, policy_step=False):
         """

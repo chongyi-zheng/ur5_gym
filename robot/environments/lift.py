@@ -336,14 +336,18 @@ class Lift(RobotEnv):
         super()._get_reference()
 
         # Additional object references from this env
-        self.cube_body_id = self.sim.model.body_name2id("cube")
-        self.l_finger_geom_ids = [
-            self.sim.model.geom_name2id(x) for x in self.robots[0].gripper.important_geoms["left_finger"]
-        ]
-        self.r_finger_geom_ids = [
-            self.sim.model.geom_name2id(x) for x in self.robots[0].gripper.important_geoms["right_finger"]
-        ]
-        self.cube_geom_id = self.sim.model.geom_name2id("cube")
+        # TODO (chongyi zheng): delete commented code
+        # self.cube_body_id = self.sim.model.body_name2id("cube")
+        # self.l_finger_geom_ids = [
+        #     self.sim.model.geom_name2id(x) for x in self.robots[0].gripper.important_geoms["left_finger"]
+        # ]
+        # self.r_finger_geom_ids = [
+        #     self.sim.model.geom_name2id(x) for x in self.robots[0].gripper.important_geoms["right_finger"]
+        # ]
+        # self.cube_geom_id = self.sim.model.geom_name2id("cube")
+        self.cube_body_id = self.sim.body_name2id("cube")
+        self.l_finger_geom_ids = self.sim.geom_name2id(self.robots[0].gripper.important_geoms["left_finger"])
+        self.r_finger_geom_ids = self.sim.geom_name2id(self.robots[0].gripper.important_geoms["right_finger"])
 
     def _reset_internal(self):
         """
