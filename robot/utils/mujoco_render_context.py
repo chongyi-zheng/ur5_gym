@@ -308,6 +308,9 @@ class MjRenderContext(object):
     #     mjr_freeContext(&self._con)
     #     mjv_freeScene(&self._scn)
 
+    def set_vopt_geomgroup(self, index, value):
+        self.sim.set_vopt_geomgroup(index, value)
+
 
 class MjRenderContextOffscreen(MjRenderContext):
     def __cinit__(self, sim, device_id):

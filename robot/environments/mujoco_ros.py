@@ -1,5 +1,6 @@
 import rospy
-from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest
+from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
+    SetFixedCamera, SetFixedCameraRequest
 import moveit_msgs.msg
 import moveit_commander
 
@@ -50,9 +51,12 @@ class MujocoROS:
     @property
     def timestep(self):
         param_name = self.prefix + '/timestep'
-        mujoco_timestep = self._get_param(param_name)
+        return self._get_param(param_name)
 
-        return mujoco_timestep
+    @property
+    def ncam(self):
+        param_name = self.prefix + '/ncam'
+        return self._get_param(param_name)
 
     def joint_pos_indexes(self, robot_joints):
         param_name = self.prefix + '/joint_pos_indexes'
@@ -68,15 +72,39 @@ class MujocoROS:
 
     def actuator_name2id(self, actuator_names):
         param_name = self.prefix + '/actuator_name2id'
+        if isinstance(actuator_names, str):
+            actuator_names = [actuator_names]
+
         selected_indexes = self._get_param(param_name, selections=actuator_names)
 
-        return selected_indexes
+        if len(selected_indexes) == 1:
+            return selected_indexes[0]
+        else:
+            return selected_indexes
+
+    def camera_name2id(self, camera_names):
+        param_name = self.prefix + '/camera_name2id'
+        if isinstance(camera_names, str):
+            camera_names = [camera_names]
+
+        selected_indexes = self._get_param(param_name, selections=camera_names)
+
+        if len(selected_indexes) == 1:
+            return selected_indexes[0]
+        else:
+            return selected_indexes
 
     def joint_name2id(self, joint_names):
         param_name = self.prefix + '/joint_name2id'
+        if isinstance(joint_names, str):
+            joint_names = [joint_names]
+
         selected_indexes = self._get_param(param_name, selections=joint_names)
 
-        return selected_indexes
+        if len(selected_indexes) == 1:
+            return selected_indexes[0]
+        else:
+            return selected_indexes
 
     def body_name2id(self, body_names):
         param_name = self.prefix + '/body_name2id'
@@ -141,11 +169,29 @@ class MujocoROS:
 
         return low_bounds, high_bounds
 
+    def set_fixed_camera(self, camera_id):
+        request = SetFixedCameraRequest(camera_id=camera_id)
+        rospy.wait_for_service(self.prefix + '/set_fixed_camera', 3)
+        try:
+            set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_fixed_camera", SetFixedCamera)
+            set_joint_qpos_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
     def set_joint_qpos(self, name, value):
         request = SetJointQPosRequest(name=name, value=value)
         rospy.wait_for_service(self.prefix + '/set_joint_qpos', 3)
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_joint_qpos", SetJointQPos)
+            set_joint_qpos_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    def set_vopt_geomgroup(self, index, value):
+        request = SetOptGeomGroupRequest(index=index, value=value)
+        rospy.wait_for_service(self.prefix + '/set_vopt_geomgroup', 3)
+        try:
+            set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_vopt_geomgroup", SetOptGeomGroup)
             set_joint_qpos_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))

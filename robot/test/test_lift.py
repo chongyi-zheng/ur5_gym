@@ -52,7 +52,7 @@ if __name__ == "__main__":
         **config,
         has_renderer=True,
         has_offscreen_renderer=False,
-        render_camera="agentview",
+        render_camera="frontview",  # "agentview"
         ignore_done=True,
         use_camera_obs=False,
         gripper_visualizations=True,

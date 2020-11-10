@@ -138,7 +138,9 @@ class MujocoROSViewer(MujocoROSViewerBasic):
     def __init__(self, sim):
         super().__init__(sim)
 
-        self._ncam = sim.model.ncam
+        # TODO (chongyi zheng): get ncam from ros parameter server
+        # self._ncam = sim.model.ncam
+        self._ncam = sim.ncam
         self._paused = False  # is viewer paused.
         # should we advance viewer just by one step.
         self._advance_by_one_step = False

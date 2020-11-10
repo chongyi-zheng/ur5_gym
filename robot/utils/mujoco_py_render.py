@@ -66,8 +66,10 @@ class MujocoROSPyRenderer:
         Args:
             camera_id (int): id of the camera to set the current viewer to
         """
-        self.viewer.cam.fixedcamid = camera_id
-        self.viewer.cam.type = const.CAMERA_FIXED
+        # TODO (chongyi zheng): set camera with ros service
+        self.viewer.sim.set_fixed_camera(camera_id)
+        # self.viewer.cam.fixedcamid = camera_id
+        # self.viewer.cam.type = const.CAMERA_FIXED
 
     def render(self):
         """
