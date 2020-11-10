@@ -82,6 +82,7 @@ if __name__ == "__main__":
         from robosuite.devices import Keyboard
 
         device = Keyboard(pos_sensitivity=args.pos_sensitivity, rot_sensitivity=args.rot_sensitivity)
+        # TODO (chongyi zheng): current viewer is empty
         env.viewer.add_keypress_callback("any", device.on_press)
         env.viewer.add_keyup_callback("any", device.on_release)
         env.viewer.add_keyrepeat_callback("any", device.on_press)
@@ -100,8 +101,10 @@ if __name__ == "__main__":
 
         # Setup rendering
         cam_id = 0
-        num_cam = len(env.sim.model.camera_names)
-        env.render()
+        # num_cam = len(env.sim.model.camera_names)
+        num_cam = env.sim.ncam
+        # TODO (chongyi zheng): Do we need this?
+        # env.render()
 
         # Initialize variables that should the maintained between resets
         last_grasp = 0
@@ -156,4 +159,5 @@ if __name__ == "__main__":
 
             # Step through the simulation and render
             obs, reward, done, info = env.step(action)
-            env.render()
+            # TODO (chongyi zheng): Do we need this?
+            # env.render()

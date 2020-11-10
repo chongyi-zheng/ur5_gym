@@ -342,13 +342,19 @@ class SingleArm(Robot):
         # Get prefix from robot model to avoid naming clashes for multiple robots
         pf = self.robot_model.naming_prefix
 
+        # TODO (chongyi zheng): read data from moveit or ros
         # proprioceptive features
-        di[pf + "joint_pos"] = np.array(
-            [self.sim.data.qpos[x] for x in self._ref_joint_pos_indexes]
-        )
-        di[pf + "joint_vel"] = np.array(
-            [self.sim.data.qvel[x] for x in self._ref_joint_vel_indexes]
-        )
+        # di[pf + "joint_pos"] = np.array(
+        #     [self.sim.data.qpos[x] for x in self._ref_joint_pos_indexes]
+        # )
+        di[pf + "joint_pos"] = np.array(self.sim.get_joint_pos(self.robot_joints))
+        tmp = self.sim.get_joint_pos(self.robot_joints, ros=False)
+
+        # di[pf + "joint_vel"] = np.array(
+        #     [self.sim.data.qvel[x] for x in self._ref_joint_vel_indexes]
+        # )
+        di[pf + "joint_vel"] = np.array(self.sim.get_joint_vel(self.robot_joints))
+        tmp = self.sim.get_joint_vel(self.robot_joints, ros=False)
 
         robot_states = [
             np.sin(di[pf + "joint_pos"]),

@@ -202,8 +202,10 @@ class MujocoROSViewer(MujocoROSViewerBasic):
         else:
             # inner_loop runs "_loop_count" times in expectation (where "_loop_count" is a float).
             # Therefore, frames are displayed in the real-time.
-            self._loop_count += self.sim.model.opt.timestep * self.sim.nsubsteps / \
-                (self._time_per_render * self._run_speed)
+            # TODO (chongyi zheng): this line has been modified
+            # self._loop_count += self.sim.model.timestep * self.sim.nsubsteps / \
+            #     (self._time_per_render * self._run_speed)
+            self._loop_count += self.sim.timestep / (self._time_per_render * self._run_speed)
             if self._render_every_frame:
                 self._loop_count = 1
             while self._loop_count > 0:

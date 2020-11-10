@@ -186,11 +186,13 @@ class MujocoEnv(metaclass=EnvMeta):
             self._load_model()
             self._initialize_sim()
         # Else, we only reset the sim internally
-        else:
-            self.sim.reset()
+        # else:
+        #     # TODO (chongyi zheng): delete this
+        #     self.sim.reset()
         # Reset necessary robosuite-centric variables
         self._reset_internal()
-        self.sim.forward()
+        # TODO (ongyi zheng): delete this
+        # self.sim.forward()
         return self._get_observation()
 
     def _reset_internal(self):

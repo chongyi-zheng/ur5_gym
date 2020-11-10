@@ -137,14 +137,16 @@ class MjRenderContext(object):
     #         self._model_ptr.vis.global_.offheight = height
     #         mjr_freeContext(&self._con)
     #         self._set_mujoco_buffers()
-    #
-    # def render(self, width, height, camera_id=None, segmentation=False):
+
+    # TODO (chongyi zheng): Do we need this?
+    # def render(self, width, height):
     #     cdef mjrRect rect
     #     rect.left = 0
     #     rect.bottom = 0
     #     rect.width = width
     #     rect.height = height
     #
+    #     # TODO (chongyi zheng): Do we need this?
     #     if self.sim.render_callback is not None:
     #         self.sim.render_callback(self.sim, self)
     #
@@ -181,7 +183,7 @@ class MjRenderContext(object):
     #         if segmentation:
     #             self._scn.flags[const.RND_SEGMENT] = 0
     #             self._scn.flags[const.RND_IDCOLOR] = 0
-    #
+
     # def read_pixels(self, width, height, depth=True, segmentation=False):
     #     cdef mjrRect rect
     #     rect.left = 0
@@ -329,12 +331,13 @@ class MjRenderContextWindow(MjRenderContext):
     def window(self):
         return self.opengl_context.window
 
-    def render(self):
-        if self.window is None or glfw.window_should_close(self.window):
-            return
-
-        glfw.make_context_current(self.window)
-        super().render(*glfw.get_framebuffer_size(self.window))
-        if self.render_swap_callback is not None:
-            self.render_swap_callback()
-        glfw.swap_buffers(self.window)
+    # TODO (chongyi zheng): Do we need this?
+    # def render(self):
+    #     if self.window is None or glfw.window_should_close(self.window):
+    #         return
+    #
+    #     glfw.make_context_current(self.window)
+    #     super().render(*glfw.get_framebuffer_size(self.window))
+    #     if self.render_swap_callback is not None:
+    #         self.render_swap_callback()
+    #     glfw.swap_buffers(self.window)

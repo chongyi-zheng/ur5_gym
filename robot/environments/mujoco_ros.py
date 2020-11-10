@@ -1,8 +1,10 @@
 import rospy
+import mujoco_ros_msgs.msg
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
     SetFixedCamera, SetFixedCameraRequest
 import moveit_msgs.msg
 import moveit_commander
+import sensor_msgs.msg
 
 import numpy as np
 
@@ -16,21 +18,27 @@ class MujocoROSError(Exception):
 
 class MujocoROS:
     def __init__(self, node_name='mujoco_ros', prefix='/mujoco_ros', manipulator_group_name='manipulator',
-                 gripper_group_name='gripper'):
+                 gripper_group_name='gripper', state_validity_srv='/check_state_validity',
+                 joint_state_msg='/joint_states'):
         self.node_name = node_name
+        self.prefix = prefix
         self.manipulator_group_name = manipulator_group_name
         self.gripper_group_name = gripper_group_name
-        self.prefix = prefix
+        self.state_validity_srv = state_validity_srv
+        self.joint_state_msg = joint_state_msg
 
         rospy.init_node(self.node_name, anonymous=True)
         self._moveit_robot = moveit_commander.RobotCommander()
-        self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
-        self._moveit_gripper_group = moveit_commander.MoveGroupCommander(self.gripper_group_name)
+        # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
+        # self._moveit_gripper_group = moveit_commander.MoveGroupCommander(self.gripper_group_name)
+        self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+
         try:
             self._joint_names = self._get_param("/robot_joints")
         except MujocoROSError:
             self._joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._state_validity = StateValidity()
+        self._state_validity = StateValidity(self.state_validity_srv)
 
     def _get_param(self, param_name, selections=None):
         try:
@@ -158,16 +166,71 @@ class MujocoROS:
         low_bounds = []
         high_bounds = []
         for joint_name in joint_names:
-            joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)[0]
+            # joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)[0]
+            joint_limits = self._moveit_robot.get_joint(joint_name).bounds()
             if joint_type == 'pos':
-                low_bounds.append(joint_limit[0])
-                high_bounds.append(joint_limit[1])
+                low_bounds.append(joint_limits[0])
+                high_bounds.append(joint_limits[1])
             else:
                 raise ValueError("Joint type \"{}\" is unknown!".format(joint_type))
         low_bounds = np.asarray(low_bounds)
         high_bounds = np.asarray(high_bounds)
 
         return low_bounds, high_bounds
+
+    def get_joint_pos(self, joint_names, ros=True):
+        joint_states_msg = None
+        if ros:
+            try:
+                joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+        else:
+            try:
+                joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
+                                                          mujoco_ros_msgs.msg.JointStates, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+        index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
+        indices = [index_map[name] for name in joint_names]
+        joint_pos = []
+        for idx in indices:
+            if not ros:
+                if len(joint_states_msg.position[idx].data) == 1:
+                    joint_pos.append(joint_states_msg.position[idx].data[0])
+                else:
+                    joint_pos.append(list(joint_states_msg.position[idx].data))
+            else:
+                joint_pos.append(joint_states_msg.position[idx])
+
+        return joint_pos
+
+    def get_joint_vel(self, joint_names, ros=True):
+        joint_states_msg = None
+        if ros:
+            try:
+                joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+        else:
+            try:
+                joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
+                                                          mujoco_ros_msgs.msg.JointStates, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+        index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
+        indices = [index_map[name] for name in joint_names]
+        joint_vel = []
+        for idx in indices:
+            if not ros:
+                if len(joint_states_msg.velocity[idx].data) == 1:
+                    joint_vel.append(joint_states_msg.velocity[idx].data[0])
+                else:
+                    joint_vel.append(list(joint_states_msg.velocity[idx].data))
+            else:
+                joint_vel.append(joint_states_msg.velocity[idx])
+
+        return joint_vel
 
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
