@@ -5,9 +5,10 @@ from collections import OrderedDict
 import robosuite.utils.transform_utils as T
 
 from robosuite.models.grippers import gripper_factory
-from robosuite.controllers import controller_factory, load_controller_config
-
 # TODO (chongyi zheng)
+# from robosuite.controllers import controller_factory, load_controller_config
+from robot.controllers import controller_factory, load_controller_config
+
 # from robosuite.robots.robot import Robot
 from robot.robots.robot import Robot
 from robosuite.utils.control_utils import DeltaBuffer, RingBuffer
@@ -86,7 +87,8 @@ class SingleArm(Robot):
 
         self.recent_qpos = None                             # Current and last robot arm qpos
         self.recent_actions = None                          # Current and last action applied
-        self.recent_torques = None                          # Current and last torques applied
+        # TODO (chongyi zheng): Do we need this?
+        # self.recent_torques = None                          # Current and last torques applied
         self.recent_ee_forcetorques = None                  # Current and last forces / torques sensed at eef
         self.recent_ee_pose = None                          # Current and last eef pose (pos + ori (quat))
         self.recent_ee_vel = None                           # Current and last eef velocity
@@ -130,7 +132,9 @@ class SingleArm(Robot):
             "qpos": self._ref_joint_pos_indexes,
             "qvel": self._ref_joint_vel_indexes
         }
-        self.controller_config["actuator_range"] = self.torque_limits
+        # TODO (chongyi zheng): replace with position limits
+        # self.controller_config["actuator_range"] = self.torque_limits
+        self.controller_config["actuator_range"] = self.position_limits
         self.controller_config["policy_freq"] = self.control_freq
         self.controller_config["ndim"] = len(self.robot_joints)
 
@@ -182,18 +186,22 @@ class SingleArm(Robot):
         if not deterministic:
             # Now, reset the gripper if necessary
             if self.has_gripper:
-                self.sim.data.qpos[
-                    self._ref_gripper_joint_pos_indexes
-                ] = self.gripper.init_qpos
+                # TODO (chongyi zheng): initialize gripper with moveit
+                # self.sim.data.qpos[
+                #     self._ref_gripper_joint_pos_indexes
+                # ] = self.gripper.init_qpos
+                self.sim.open_gripper()
 
+        # TODO (chongyi zheng): do we need this?
         # Update base pos / ori references in controller
-        self.controller.update_base_pose(self.base_pos, self.base_ori)
+        # self.controller.update_base_pose(self.base_pos, self.base_ori)
 
+        # TODO (chongyi zheng): do we need this?
         # Setup buffers to hold recent values
         self.recent_qpos = DeltaBuffer(dim=len(self.joint_indexes))
         self.recent_actions = DeltaBuffer(dim=self.action_dim)
-        self.recent_torques = DeltaBuffer(dim=len(self.joint_indexes))
-        self.recent_ee_forcetorques = DeltaBuffer(dim=6)
+        # self.recent_torques = DeltaBuffer(dim=len(self.joint_indexes))
+        # self.recent_ee_forcetorques = DeltaBuffer(dim=6)
         self.recent_ee_pose = DeltaBuffer(dim=7)
         self.recent_ee_vel = DeltaBuffer(dim=6)
         self.recent_ee_vel_buffer = RingBuffer(dim=6, length=10)
@@ -384,6 +392,24 @@ class SingleArm(Robot):
         low_c, high_c = self.controller.control_limits
         low = np.concatenate([low_c, low])
         high = np.concatenate([high_c, high])
+
+        return low, high
+
+    @property
+    def position_limits(self):
+        """
+        Position lower/upper limits per dimension.
+
+        Returns:
+            2-tuple:
+
+                - (np.array) minimum (low) torque values
+                - (np.array) maximum (high) torque values
+        """
+        # Position limit values pulled from relevant robot.xml file
+        # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
+        # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
+        low, high = self.sim.get_joint_limits(self.robot_joints, 'pos')
 
         return low, high
 

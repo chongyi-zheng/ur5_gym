@@ -172,7 +172,7 @@ if __name__ == "__main__":
                 env_configuration=args.config
             )
 
-            # If action is none, then this a reset so we should break
+            # If action is none, then this is a reset so we should break
             if action is None:
                 break
 

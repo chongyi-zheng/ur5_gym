@@ -1,12 +1,11 @@
 from collections import OrderedDict
+# TODO (chongyi zheng): this line has been modified
 # from mujoco_py import MjSim, MjRenderContextOffscreen
 # from mujoco_py import load_model_from_xml
 
-from robosuite.utils import SimulationError, XMLError, MujocoPyRenderer
+from robosuite.utils import SimulationError, XMLError
+from robot.utils.mujoco_py_render import MujocoROSPyRenderer
 from robot.environments.mujoco_ros import MujocoROS
-
-import rospy
-import rosgraph
 
 REGISTERED_ENVS = {}
 
@@ -198,29 +197,29 @@ class MujocoEnv(metaclass=EnvMeta):
         """Resets simulation internal configurations."""
 
         # TODO (chongyi zheng): delete viewer cause we cannot do this with real robot?
-        # # create visualization screen or renderer
-        # if self.has_renderer and self.viewer is None:
-        #     self.viewer = MujocoPyRenderer(self.sim)
-        #     self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-        #     self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
-        #
-        #     # hiding the overlay speeds up rendering significantly
-        #     self.viewer.viewer._hide_overlay = True
-        #
-        #     # make sure mujoco-py doesn't block rendering frames
-        #     # (see https://github.com/StanfordVL/robosuite/issues/39)
-        #     self.viewer.viewer._render_every_frame = True
-        #
-        #     # Set the camera angle for viewing
-        #     if self.render_camera is not None:
-        #         self.viewer.set_camera(camera_id=self.sim.model.camera_name2id(self.render_camera))
-        #
-        # elif self.has_offscreen_renderer:
-        #     if self.sim._render_context_offscreen is None:
-        #         render_context = MjRenderContextOffscreen(self.sim)
-        #         self.sim.add_render_context(render_context)
-        #     self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-        #     self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+        # create visualization screen or renderer
+        if self.has_renderer and self.viewer is None:
+            self.viewer = MujocoROSPyRenderer(self.sim)
+            self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+            self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+
+            # hiding the overlay speeds up rendering significantly
+            self.viewer.viewer._hide_overlay = True
+
+            # make sure mujoco-py doesn't block rendering frames
+            # (see https://github.com/StanfordVL/robosuite/issues/39)
+            self.viewer.viewer._render_every_frame = True
+
+            # Set the camera angle for viewing
+            if self.render_camera is not None:
+                self.viewer.set_camera(camera_id=self.sim.model.camera_name2id(self.render_camera))
+
+        elif self.has_offscreen_renderer:
+            if self.sim._render_context_offscreen is None:
+                render_context = MjRenderContextOffscreen(self.sim)
+                self.sim.add_render_context(render_context)
+            self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+            self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
 
         # additional housekeeping
         # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless

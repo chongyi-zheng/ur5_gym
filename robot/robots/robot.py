@@ -116,14 +116,17 @@ class Robot(object):
             init_qpos += noise
         # TODO (chongyi zheng): move to initial position with moveit_commander!
         # Set initial position in sim
-        self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
+        # self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
+        init_joint_positions = dict(zip(self.robot_joints, init_qpos))
+        self.sim.goto_joint_positions(init_joint_positions)
 
         # Load controllers
         self._load_controller()
 
+        # TODO (chongyi zheng): Do we need this?
         # Update base pos / ori references
-        self.base_pos = self.sim.data.get_body_xpos(self.robot_model.robot_base)
-        self.base_ori = T.mat2quat(self.sim.data.get_body_xmat(self.robot_model.robot_base).reshape((3, 3)))
+        # self.base_pos = self.sim.data.get_body_xpos(self.robot_model.robot_base)
+        # self.base_ori = T.mat2quat(self.sim.data.get_body_xmat(self.robot_model.robot_base).reshape((3, 3)))
 
     def setup_references(self):
         """
@@ -160,14 +163,14 @@ class Robot(object):
         #     self.sim.model.actuator_name2id(actuator)
         #     for actuator in self.robot_model.actuators["vel"]
         # ]
-        self._ref_joint_pos_actuator_indexes = self.sim.actuator_name2id(
+        self._ref_joint_vel_actuator_indexes = self.sim.actuator_name2id(
             [actuator for actuator in self.robot_model.actuators["vel"]])
 
         # self._ref_joint_torq_actuator_indexes = [
         #     self.sim.model.actuator_name2id(actuator)
         #     for actuator in self.robot_model.actuators["torq"]
         # ]
-        self._ref_joint_pos_actuator_indexes = self.sim.actuator_name2id(
+        self._ref_joint_torq_actuator_indexes = self.sim.actuator_name2id(
             [actuator for actuator in self.robot_model.actuators["torq"]])
 
     def control(self, action, policy_step=False):

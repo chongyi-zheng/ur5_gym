@@ -139,7 +139,7 @@ class UR5(Robot):
         ----------
 
         """
-        self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().shape, dtype=np.float32)
+        # self._observation_space = gym.spaces.Box(-np.inf, np.inf, shape=self.get_observation().shape, dtype=np.float32)
 
         lower_bounds = []
         upper_bounds = []
