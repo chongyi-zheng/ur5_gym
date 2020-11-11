@@ -249,7 +249,7 @@ class MujocoROS:
 
         return eef_pos
 
-    def get_eef_quat(self, eef_body_name=True, format="xyzw"):
+    def get_eef_quat(self, eef_body_name=None, format="xyzw"):
         if eef_body_name is None:  # read from moveit
             eef_pose = self._moveit_manipulator_group.get_current_pose()
             eef_pose_ori = eef_pose.pose.orientation
