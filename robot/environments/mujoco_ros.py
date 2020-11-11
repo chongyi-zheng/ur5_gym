@@ -232,6 +232,47 @@ class MujocoROS:
 
         return joint_vel
 
+    def get_eef_pos(self, eef_site_name=None):
+        if eef_site_name is None:  # read from moveit
+            eef_pose = self._moveit_manipulator_group.get_current_pose()
+            eef_pos = [eef_pose.pose.position.x, eef_pose.pose.position.y, eef_pose.pose.position.z]
+        else:  # read from mujoco
+            site_states_msg = None
+            try:
+                site_states_msg = rospy.wait_for_message(self.prefix + '/site_states',
+                                                         mujoco_ros_msgs.msg.SiteStates, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+            index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
+            idx = index_map[eef_site_name]
+            eef_pos = list(site_states_msg.position[idx].data)
+
+        return eef_pos
+
+    def get_eef_quat(self, eef_body_name=True, format="xyzw"):
+        if eef_body_name is None:  # read from moveit
+            eef_pose = self._moveit_manipulator_group.get_current_pose()
+            eef_pose_ori = eef_pose.pose.orientation
+        else:
+            body_states_msg = None
+            try:
+                body_states_msg = rospy.wait_for_message(self.prefix + '/body_states',
+                                                         mujoco_ros_msgs.msg.BodyStates, 3)
+            except rospy.ROSException as e:
+                MujocoROSError("Message read failed: {}".format(e))
+            index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+            idx = index_map[eef_body_name]
+            eef_pose_ori = body_states_msg.pose[idx].orientation
+
+        if format == "xyzw":
+            eef_quat = [eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z, eef_pose_ori.w]
+        elif format == "wxyz":
+            eef_quat = [eef_pose_ori.w, eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z]
+        else:
+            raise MujocoROSError("Invalid end effector quaternion format!")
+
+        return eef_quat
+
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
         rospy.wait_for_service(self.prefix + '/set_fixed_camera', 3)

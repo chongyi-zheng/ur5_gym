@@ -342,19 +342,21 @@ class SingleArm(Robot):
         # Get prefix from robot model to avoid naming clashes for multiple robots
         pf = self.robot_model.naming_prefix
 
-        # TODO (chongyi zheng): read data from moveit or ros
+        # TODO (chongyi zheng): read data from ros or mujoco
         # proprioceptive features
         # di[pf + "joint_pos"] = np.array(
         #     [self.sim.data.qpos[x] for x in self._ref_joint_pos_indexes]
         # )
         di[pf + "joint_pos"] = np.array(self.sim.get_joint_pos(self.robot_joints))
-        tmp = self.sim.get_joint_pos(self.robot_joints, ros=False)
+        tmp = np.array(self.sim.get_joint_pos(self.robot_joints, ros=False))
+        assert np.allclose(di[pf + "joint_pos"], tmp)
 
         # di[pf + "joint_vel"] = np.array(
         #     [self.sim.data.qvel[x] for x in self._ref_joint_vel_indexes]
         # )
         di[pf + "joint_vel"] = np.array(self.sim.get_joint_vel(self.robot_joints))
-        tmp = self.sim.get_joint_vel(self.robot_joints, ros=False)
+        tmp = np.array(self.sim.get_joint_vel(self.robot_joints, ros=False))
+        assert np.allclose(di[pf + "joint_vel"], tmp, atol=1e-5)
 
         robot_states = [
             np.sin(di[pf + "joint_pos"]),
@@ -362,21 +364,40 @@ class SingleArm(Robot):
             di[pf + "joint_vel"],
         ]
 
+        # TODO (chongyi zheng): read data from ros or mujoco
         # Add in eef pos / qpos
-        di[pf + "eef_pos"] = np.array(self.sim.data.site_xpos[self.eef_site_id])
-        di[pf + "eef_quat"] = T.convert_quat(
-            self.sim.data.get_body_xquat(self.robot_model.eef_name), to="xyzw"
-        )
+        # di[pf + "eef_pos"] = np.array(self.sim.data.site_xpos[self.eef_site_id])
+        # di[pf + "eef_quat"] = T.convert_quat(
+        #     self.sim.data.get_body_xquat(self.robot_model.eef_name), to="xyzw"
+        # )
+        # self.eef_site_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_site"])
+        di[pf + "eef_pos"] = np.array(self.sim.get_eef_pos())
+        tmp = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
+        assert np.allclose(di[pf + "eef_pos"], tmp)
+
+        di[pf + "eef_quat"] = np.array(self.sim.get_eef_quat())
+        tmp = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
+        assert np.allclose(di[pf + "eef_quat"], tmp)
+
         robot_states.extend([di[pf + "eef_pos"], di[pf + "eef_quat"]])
 
+        # TODO (chongyi zheng): read data from ros or mujoco
         # add in gripper information
         if self.has_gripper:
-            di[pf + "gripper_qpos"] = np.array(
-                [self.sim.data.qpos[x] for x in self._ref_gripper_joint_pos_indexes]
-            )
-            di[pf + "gripper_qvel"] = np.array(
-                [self.sim.data.qvel[x] for x in self._ref_gripper_joint_vel_indexes]
-            )
+            # di[pf + "gripper_qpos"] = np.array(
+            #     [self.sim.data.qpos[x] for x in self._ref_gripper_joint_pos_indexes]
+            # )
+            # di[pf + "gripper_qvel"] = np.array(
+            #     [self.sim.data.qvel[x] for x in self._ref_gripper_joint_vel_indexes]
+            # )
+            di[pf + "gripper_qpos"] = np.array(self.sim.get_joint_pos(self.gripper_joints))
+            tmp = np.array(self.sim.get_joint_pos(self.gripper_joints, ros=False))
+            assert np.allclose(di[pf + "gripper_qpos"], tmp)
+
+            di[pf + "gripper_qvel"] = np.array(self.sim.get_joint_vel(self.gripper_joints))
+            tmp = np.array(self.sim.get_joint_vel(self.gripper_joints, ros=False))
+            assert np.allclose(di[pf + "gripper_qvel"], tmp, atol=1e-6)
+
             robot_states.extend([di[pf + "gripper_qpos"], di[pf + "gripper_qvel"]])
 
         di[pf + "robot-state"] = np.concatenate(robot_states)
