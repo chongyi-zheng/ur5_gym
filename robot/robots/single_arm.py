@@ -373,7 +373,7 @@ class SingleArm(Robot):
         # self.eef_site_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_site"])
         di[pf + "eef_pos"] = np.array(self.sim.get_eef_pos())
         tmp = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
-        # assert np.allclose(di[pf + "eef_pos"], tmp)
+        assert np.allclose(di[pf + "eef_pos"], tmp)
 
         di[pf + "eef_quat"] = np.array(self.sim.get_eef_quat())
         tmp = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
