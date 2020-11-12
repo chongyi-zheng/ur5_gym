@@ -212,20 +212,22 @@ class OperationalSpaceController(Controller):
             set_pos (Iterable): If set, overrides @action and sets the desired absolute eef position goal state
             set_ori (Iterable): IF set, overrides @action and sets the desired absolute eef orientation goal state
         """
+        # TODO (chongyi zheng): modify the code below to work with ROS
         # Update state
         self.update()
 
         # Parse action based on the impedance mode, and update kp / kd as necessary
-        if self.impedance_mode == "variable":
-            damping_ratio, kp, delta = action[:6], action[6:12], action[12:]
-            self.kp = np.clip(kp, self.kp_min, self.kp_max)
-            self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
-        elif self.impedance_mode == "variable_kp":
-            kp, delta = action[:6], action[6:]
-            self.kp = np.clip(kp, self.kp_min, self.kp_max)
-            self.kd = 2 * np.sqrt(self.kp)  # critically damped
-        else:   # This is case "fixed"
-            delta = action
+        # if self.impedance_mode == "variable":
+        #     damping_ratio, kp, delta = action[:6], action[6:12], action[12:]
+        #     self.kp = np.clip(kp, self.kp_min, self.kp_max)
+        #     self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
+        # elif self.impedance_mode == "variable_kp":
+        #     kp, delta = action[:6], action[6:]
+        #     self.kp = np.clip(kp, self.kp_min, self.kp_max)
+        #     self.kd = 2 * np.sqrt(self.kp)  # critically damped
+        # else:   # This is case "fixed"
+        #     delta = action
+        delta = action
 
         # If we're using deltas, interpret actions as such
         if self.use_delta:
@@ -277,6 +279,7 @@ class OperationalSpaceController(Controller):
         Returns:
              np.array: Command torques
         """
+        # TODO (chongyi zheng): modify the code below to work with ROS
         # Update state
         self.update()
 
