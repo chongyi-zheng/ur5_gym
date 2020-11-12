@@ -349,10 +349,11 @@ class RobotEnv(MujocoEnv):
             "environment got invalid action dimension -- expected {}, got {}".format(
                 self.action_dim, len(action))
 
+        # TODO (chongyi zheng): control the robot with ROS
         # Update robot joints based on controller actions
         cutoff = 0
         for idx, robot in enumerate(self.robots):
-            robot_action = action[cutoff:cutoff+robot.action_dim]
+            robot_action = action[cutoff:cutoff + robot.action_dim]
             robot.control(robot_action, policy_step=policy_step)
             cutoff += robot.action_dim
 

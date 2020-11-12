@@ -273,6 +273,42 @@ class MujocoROS:
 
         return eef_quat
 
+    def get_object_pos(self, object_name):
+        # TODO (chongyi zheng): object pose estimation using computer vision algorithm
+        body_states_msg = None
+        try:
+            body_states_msg = rospy.wait_for_message(self.prefix + '/body_states',
+                                                     mujoco_ros_msgs.msg.BodyStates, 3)
+        except rospy.ROSException as e:
+            MujocoROSError("Message read failed: {}".format(e))
+        index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+        idx = index_map[object_name]
+        object_pos = [body_states_msg.pose[idx].position.x, body_states_msg.pose[idx].position.y,
+                      body_states_msg.pose[idx].position.z]
+
+        return object_pos
+
+    def get_object_quat(self, object_name, format="xyzw"):
+        # TODO (chongyi zheng): object pose estimation using computer vision algorithm
+        body_states_msg = None
+        try:
+            body_states_msg = rospy.wait_for_message(self.prefix + '/body_states',
+                                                     mujoco_ros_msgs.msg.BodyStates, 3)
+        except rospy.ROSException as e:
+            MujocoROSError("Message read failed: {}".format(e))
+        index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+        idx = index_map[object_name]
+        object_ori = body_states_msg.pose[idx].orientation
+
+        if format == "xyzw":
+            object_quat = [object_ori.x, object_ori.y, object_ori.z, object_ori.w]
+        elif format == "wxyz":
+            object_quat = [object_ori.w, object_ori.x, object_ori.y, object_ori.z]
+        else:
+            raise MujocoROSError("Invalid object quaternion format!")
+
+        return object_quat
+
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
         rospy.wait_for_service(self.prefix + '/set_fixed_camera', 3)

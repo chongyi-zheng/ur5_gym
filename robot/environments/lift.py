@@ -387,20 +387,24 @@ class Lift(RobotEnv):
         """
         di = super()._get_observation()
 
+        # TODO (chongyi zheng): read object obs from ROS
         # low-level object information
         if self.use_object_obs:
             # Get robot prefix
             pr = self.robots[0].robot_model.naming_prefix
 
             # position and rotation of object
-            cube_pos = np.array(self.sim.data.body_xpos[self.cube_body_id])
-            cube_quat = convert_quat(
-                np.array(self.sim.data.body_xquat[self.cube_body_id]), to="xyzw"
-            )
+            # cube_pos = np.array(self.sim.data.body_xpos[self.cube_body_id])
+            # cube_quat = convert_quat(
+            #     np.array(self.sim.data.body_xquat[self.cube_body_id]), to="xyzw"
+            # )
+            cube_pos = np.array(self.sim.get_object_pos("cube"))
+            cube_quat = np.array(self.sim.get_object_quat("cube"))
             di["cube_pos"] = cube_pos
             di["cube_quat"] = cube_quat
 
-            gripper_site_pos = np.array(self.sim.data.site_xpos[self.robots[0].eef_site_id])
+            # gripper_site_pos = np.array(self.sim.data.site_xpos[self.robots[0].eef_site_id])
+            gripper_site_pos = np.array(self.sim.get_eef_pos())
             di[pr + "gripper_to_cube"] = gripper_site_pos - cube_pos
 
             di["object-state"] = np.concatenate(
