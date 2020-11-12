@@ -5,6 +5,7 @@ from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGro
 import moveit_msgs.msg
 import moveit_commander
 import sensor_msgs.msg
+import geometry_msgs.msg
 
 import numpy as np
 
@@ -163,20 +164,17 @@ class MujocoROS:
             return selected_indexes
 
     def get_joint_limits(self, joint_names, joint_type='pos'):
-        low_bounds = []
-        high_bounds = []
+        joint_limits = []
         for joint_name in joint_names:
             # joint_limit = self._moveit_robot._r.get_joint_limits(joint_name)[0]
-            joint_limits = self._moveit_robot.get_joint(joint_name).bounds()
+            joint_limit = self._moveit_robot.get_joint(joint_name).bounds()
             if joint_type == 'pos':
-                low_bounds.append(joint_limits[0])
-                high_bounds.append(joint_limits[1])
+                joint_limits.append(joint_limit)
             else:
                 raise ValueError("Joint type \"{}\" is unknown!".format(joint_type))
-        low_bounds = np.asarray(low_bounds)
-        high_bounds = np.asarray(high_bounds)
+        joint_limits = np.array(joint_limits)
 
-        return low_bounds, high_bounds
+        return joint_limits
 
     def get_joint_pos(self, joint_names, ros=True):
         joint_states_msg = None
@@ -350,14 +348,60 @@ class MujocoROS:
         is_valid = result.valid
         return is_valid
 
-    def goto_joint_positions(self, joint_positions):
-        if self.is_position_valid(joint_positions):
-            self._moveit_manipulator_group.go(joint_positions, wait=True)
+    def goto_arm_positions(self, arm_joint_positions, wait=True):
+        if self.is_position_valid(arm_joint_positions):
+            # go to target joint positions
+            self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
 
-    def open_gripper(self):
+            # calling `stop()` ensures that there is no residual movement
+            self._moveit_manipulator_group.stop()
+        else:
+            raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+
+    def goto_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw", wait=True):
+        assert np.shape(eef_pos) == (3,) and np.shape(eef_quat) == (4,), "Invalid end effector pose!"
+
+        pose = geometry_msgs.msg.Pose()
+        pose.position.x = eef_pos[0]
+        pose.position.y = eef_pos[1]
+        pose.position.z = eef_pos[2]
+
+        if quat_format == "xyzw":
+            pose.orientation.x = eef_quat[0]
+            pose.orientation.y = eef_quat[1]
+            pose.orientation.z = eef_quat[2]
+            pose.orientation.w = eef_quat[3]
+        elif quat_format == "wxyz":
+            pose.orientation.w = eef_quat[0]
+            pose.orientation.x = eef_quat[1]
+            pose.orientation.y = eef_quat[2]
+            pose.orientation.z = eef_quat[3]
+
+        # TODO (chongyi zheng): check validity of pose
+        # go to target pose
+        self._moveit_manipulator_group.set_pose_target(pose)
+        self._moveit_manipulator_group.go(wait=wait)
+
+        # calling `stop()` ensures that there is no residual movement
+        self._moveit_manipulator_group.stop()
+
+        # it is always good to clear your targets after planning with poses.
+        self._moveit_manipulator_group.clear_pose_targets()
+
+    def goto_gripper_positions(self, gripper_joint_positions, wait=True):
+        if self.is_position_valid(gripper_joint_positions):
+            # go to target joint positions
+            self._moveit_gripper_group.go(gripper_joint_positions, wait=wait)
+
+            # calling `stop()` ensures that there is no residual movement
+            self._moveit_gripper_group.stop()
+        else:
+            raise MujocoROSError("Invalid joint positions: {}".format(gripper_joint_positions))
+
+    def open_gripper(self, wait=True):
         target_values = self._moveit_gripper_group.get_named_target_values('open')
-        self._moveit_gripper_group.go(target_values, wait=True)
+        self._moveit_gripper_group.go(target_values, wait=wait)
 
-    def close_gripper(self):
+    def close_gripper(self, wait=True):
         target_values = self._moveit_gripper_group.get_named_target_values('close')
-        self._moveit_gripper_group.go(target_values, wait=True)
+        self._moveit_gripper_group.go(target_values, wait=wait)

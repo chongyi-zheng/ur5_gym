@@ -118,7 +118,7 @@ class Robot(object):
         # Set initial position in sim
         # self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
         init_joint_positions = dict(zip(self.robot_joints, init_qpos))
-        self.sim.goto_joint_positions(init_joint_positions)
+        self.sim.goto_arm_positions(init_joint_positions)
 
         # Load controllers
         self._load_controller()
@@ -272,7 +272,9 @@ class Robot(object):
         Returns:
             np.array: joint positions (in angles / radians)
         """
-        return self.sim.data.qpos[self._ref_joint_pos_indexes]
+        # TODO (chongyi zheng): update to be compatible with ROS
+        # return self.sim.data.qpos[self._ref_joint_pos_indexes]
+        return self.sim.get_joint_pos(self.robot_joints)
 
     @property
     def _joint_velocities(self):
@@ -280,7 +282,9 @@ class Robot(object):
         Returns:
             np.array: joint velocities (angular velocity)
         """
-        return self.sim.data.qvel[self._ref_joint_vel_indexes]
+        # TODO (chongyi zheng): update to be compatible with ROS
+        # return self.sim.data.qvel[self._ref_joint_vel_indexes]
+        return self.sim.get_joint_vel(self.robot_joints)
 
     @property
     def joint_indexes(self):

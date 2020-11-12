@@ -76,6 +76,7 @@ class SingleArm(Robot):
         self.gripper_visualization = gripper_visualization
         self.control_freq = control_freq
 
+        # TODO (chongyi zheng): modify the code below to work with ROS
         self.gripper = None                                 # Gripper class
         self.gripper_joints = None                          # xml joint names for gripper
         self._ref_gripper_joint_pos_indexes = None          # xml gripper joint position indexes in mjsim
@@ -84,7 +85,8 @@ class SingleArm(Robot):
         self.eef_rot_offset = None                          # rotation offsets from final arm link to gripper (quat)
         self.eef_site_id = None                             # xml element id for eef in mjsim
         self.eef_cylinder_id = None                         # xml element id for eef cylinder in mjsim
-        self.torques = None                                 # Current torques being applied
+        # self.torques = None                               # Current torques being applied
+        self.pose = None                                   # Current target pose being applied
 
         self.recent_qpos = None                             # Current and last robot arm qpos
         self.recent_actions = None                          # Current and last action applied
@@ -274,18 +276,23 @@ class SingleArm(Robot):
             self.controller.set_goal(arm_action)
 
         # Now run the controller for a step
-        torques = self.controller.run_controller()
+        pos, quat = self.controller.run_controller()
 
         # Clip the torques
-        low, high = self.torque_limits
-        self.torques = np.clip(torques, low, high)
+        # low, high = self.torque_limits
+        # self.torques = np.clip(torques, low, high)
+        # TODO (chongyi zheng): may be we should clip the 3d positions.
+        #  Note: self.position_limits are joint position limits
+        self.pose = np.concatenate([pos, quat])
 
         # Get gripper action, if applicable
         if self.has_gripper:
             self.grip_action(gripper_action)
 
         # Apply joint torque control
-        self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
+        # self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
+        # Apply pose control
+        self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
 
         # If this is a policy step, also update buffers holding recent values of interest
         if policy_step:
@@ -293,9 +300,9 @@ class SingleArm(Robot):
             self.recent_qpos.push(self._joint_positions)
             self.recent_actions.push(action)
             # self.recent_torques.push(self.torques)
-            self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
+            # self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
             self.recent_ee_pose.push(np.concatenate((self.controller.ee_pos, T.mat2quat(self.controller.ee_ori_mat))))
-            self.recent_ee_vel.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
+            # self.recent_ee_vel.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
 
             # Estimation of eef acceleration (averaged derivative of recent velocities)
             self.recent_ee_vel_buffer.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
@@ -312,12 +319,16 @@ class SingleArm(Robot):
             gripper_action (float): Value between [-1,1] to send to gripper
         """
         gripper_action_actual = self.gripper.format_action(gripper_action)
+        # TODO (chongyi zheng): control with ROS
         # rescale normalized gripper action to control ranges
-        ctrl_range = self.sim.model.actuator_ctrlrange[self._ref_joint_gripper_actuator_indexes]
+        # ctrl_range = self.sim.actuator_ctrlrange[self._ref_joint_gripper_actuator_indexes]
+        ctrl_range = np.array(self.sim.get_joint_limits(self.gripper_joints, 'pos'))
         bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
         weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
         applied_gripper_action = bias + weight * gripper_action_actual
-        self.sim.data.ctrl[self._ref_joint_gripper_actuator_indexes] = applied_gripper_action
+        # self.sim.data.ctrl[self._ref_joint_gripper_actuator_indexes] = applied_gripper_action
+        gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_action))
+        self.sim.goto_gripper_positions(gripper_joint_positions, wait=False)
 
     def visualize_gripper(self):
         """
@@ -439,7 +450,9 @@ class SingleArm(Robot):
         # Position limit values pulled from relevant robot.xml file
         # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
         # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
-        low, high = self.sim.get_joint_limits(self.robot_joints, 'pos')
+        limits = self.sim.get_joint_limits(self.robot_joints, 'pos')
+        low = np.array(limits[:, 0])
+        high = np.array(limits[:, 1])
 
         return low, high
 
