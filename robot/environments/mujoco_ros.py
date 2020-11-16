@@ -271,6 +271,21 @@ class MujocoROS:
 
         return eef_quat
 
+    def get_eef_vel(self):
+        joint_values = self.get_joint_pos(self._joint_names)
+        jac_mat = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
+        index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
+        index = [index_map[name] for name in self._joint_names]
+        jac_mat = jac_mat[:, index]  # switch columns
+
+        joint_velocities = self.get_joint_vel(self._joint_names)
+        eef_vel = np.matmul(jac_mat, joint_velocities)
+
+        return eef_vel
+
+    def get_eef_ori_vel(self):
+        pass
+
     def get_object_pos(self, object_name):
         # TODO (chongyi zheng): object pose estimation using computer vision algorithm
         body_states_msg = None

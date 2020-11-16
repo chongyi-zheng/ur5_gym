@@ -357,6 +357,7 @@ class RobotEnv(MujocoEnv):
             robot.control(robot_action, policy_step=policy_step)
             cutoff += robot.action_dim
 
+        # TODO (chongyi zheng): Do we need this?
         # Also update indicator object if necessary
         if self.use_indicator_object:
             # Apply gravity compensation to indicator object too

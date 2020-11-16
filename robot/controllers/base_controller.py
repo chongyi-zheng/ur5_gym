@@ -61,8 +61,8 @@ class Controller(object, metaclass=abc.ABCMeta):
         # robot states
         self.ee_pos = None
         self.ee_ori_mat = None
-        # self.ee_pos_vel = None
-        # self.ee_ori_vel = None
+        self.ee_pos_vel = None
+        self.ee_ori_vel = None
         # self.joint_pos = None
         # self.joint_vel = None
 
@@ -150,6 +150,9 @@ class Controller(object, metaclass=abc.ABCMeta):
             # self.ee_ori_vel = np.array(self.sim.data.site_xvelr[self.sim.model.site_name2id(self.eef_name)])
             self.ee_pos = np.array(self.sim.get_eef_pos())
             self.ee_ori_mat = T.quat2mat(np.array(self.sim.get_eef_quat()))
+            ee_vel = self.sim.get_eef_vel()
+            self.ee_pos_vel = np.array(ee_vel[:3])
+            self.ee_ori_vel = np.array(ee_vel[3:])
 
             # self.joint_pos = np.array(self.sim.data.qpos[self.qpos_index])
             # self.joint_vel = np.array(self.sim.data.qvel[self.qvel_index])

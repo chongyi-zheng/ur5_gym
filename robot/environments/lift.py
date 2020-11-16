@@ -233,31 +233,35 @@ class Lift(RobotEnv):
         if self._check_success():
             reward = 2.25
 
+        # TODO (chongyi zheng): modify this to be compatible with ROS
         # use a shaping reward
         elif self.reward_shaping:
 
             # reaching reward
-            cube_pos = self.sim.data.body_xpos[self.cube_body_id]
-            gripper_site_pos = self.sim.data.site_xpos[self.robots[0].eef_site_id]
+            # cube_pos = self.sim.data.body_xpos[self.cube_body_id]
+            # gripper_site_pos = self.sim.data.site_xpos[self.robots[0].eef_site_id]
+            cube_pos = np.array(self.sim.get_object_pos("cube"))
+            gripper_site_pos = np.array(self.sim.get_eef_pos())
             dist = np.linalg.norm(gripper_site_pos - cube_pos)
             reaching_reward = 1 - np.tanh(10.0 * dist)
             reward += reaching_reward
 
+            # TODO (chongyi zheng): Do we need this?
             # grasping reward
-            touch_left_finger = False
-            touch_right_finger = False
-            for i in range(self.sim.data.ncon):
-                c = self.sim.data.contact[i]
-                if c.geom1 in self.l_finger_geom_ids and c.geom2 == self.cube_geom_id:
-                    touch_left_finger = True
-                if c.geom1 == self.cube_geom_id and c.geom2 in self.l_finger_geom_ids:
-                    touch_left_finger = True
-                if c.geom1 in self.r_finger_geom_ids and c.geom2 == self.cube_geom_id:
-                    touch_right_finger = True
-                if c.geom1 == self.cube_geom_id and c.geom2 in self.r_finger_geom_ids:
-                    touch_right_finger = True
-            if touch_left_finger and touch_right_finger:
-                reward += 0.25
+            # touch_left_finger = False
+            # touch_right_finger = False
+            # for i in range(self.sim.data.ncon):
+            #     c = self.sim.data.contact[i]
+            #     if c.geom1 in self.l_finger_geom_ids and c.geom2 == self.cube_geom_id:
+            #         touch_left_finger = True
+            #     if c.geom1 == self.cube_geom_id and c.geom2 in self.l_finger_geom_ids:
+            #         touch_left_finger = True
+            #     if c.geom1 in self.r_finger_geom_ids and c.geom2 == self.cube_geom_id:
+            #         touch_right_finger = True
+            #     if c.geom1 == self.cube_geom_id and c.geom2 in self.r_finger_geom_ids:
+            #         touch_right_finger = True
+            # if touch_left_finger and touch_right_finger:
+            #     reward += 0.25
 
         # Scale reward if requested
         if self.reward_scale is not None:
@@ -420,7 +424,9 @@ class Lift(RobotEnv):
         Returns:
             bool: True if cube has been lifted
         """
-        cube_height = self.sim.data.body_xpos[self.cube_body_id][2]
+        # TODO (chongyi zheng): update this with ROS
+        # cube_height = self.sim.data.body_xpos[self.cube_body_id][2]
+        cube_height = self.sim.get_object_pos("cube")[2]
         table_height = self.mujoco_arena.table_offset[2]
 
         # cube is higher than the table top above a margin
