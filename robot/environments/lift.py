@@ -436,27 +436,35 @@ class Lift(RobotEnv):
         """
         Do any needed visualization here. Overrides superclass implementations.
         """
-
+        # TODO (chongyi zheng): Do we need this?
+        pass
         # color the gripper site appropriately based on distance to cube
-        if self.robots[0].gripper_visualization:
-            # get distance to cube
-            cube_site_id = self.sim.model.site_name2id("cube")
-            dist = np.sum(
-                np.square(
-                    self.sim.data.site_xpos[cube_site_id]
-                    - self.sim.data.get_site_xpos(self.robots[0].gripper.visualization_sites["grip_site"])
-                )
-            )
-
-            # set RGBA for the EEF site here
-            max_dist = 0.1
-            scaled = (1.0 - min(dist / max_dist, 1.)) ** 15
-            rgba = np.zeros(4)
-            rgba[0] = 1 - scaled
-            rgba[1] = scaled
-            rgba[3] = 0.5
-
-            self.sim.model.site_rgba[self.robots[0].eef_site_id] = rgba
+        # if self.robots[0].gripper_visualization:
+        #     # get distance to cube
+        #     # cube_site_id = self.sim.model.site_name2id("cube")
+        #     # dist = np.sum(
+        #     #     np.square(
+        #     #         self.sim.data.site_xpos[cube_site_id]
+        #     #         - self.sim.data.get_site_xpos(self.robots[0].gripper.visualization_sites["grip_site"])
+        #     #     )
+        #     # )
+        #     dist = np.sum(
+        #         np.square(
+        #             self.sim.get_object_pos("cube")
+        #             - self.sim.get_object_pos(self.robots[0].gripper.visualization_sites["grip_site"])
+        #         )
+        #     )
+        #
+        #     # set RGBA for the EEF site here
+        #     max_dist = 0.1
+        #     scaled = (1.0 - min(dist / max_dist, 1.)) ** 15
+        #     rgba = np.zeros(4)
+        #     rgba[0] = 1 - scaled
+        #     rgba[1] = scaled
+        #     rgba[3] = 0.5
+        #
+        #     # self.sim.model.site_rgba[self.robots[0].eef_site_id] = rgba
+        #     self.sim.set_site_rgba(self.robots[0].gripper.visualization_sites["grip_site"], rgba)
 
     def _check_robot_configuration(self, robots):
         """

@@ -1,9 +1,231 @@
 import rospy
+import moveit_msgs.msg
 import moveit_msgs.srv
+from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import JointState
+
+
+class ForwardKinematics:
+    """Interface to MoveIt! forward kinematics service."""
+
+    def __init__(self, srv_name='/compute_fk', js_topic_name='/robot/joint_states'):
+        """Interface to MoveIt! forward kinematics service.
+
+        Arguments
+        ----------
+        - srv_name: str
+            The name of the MoveIt! forward kinematics service
+
+        - js_topic_name: str
+            The name of the joint state topic
+
+        Returns
+        ----------
+
+        """
+        self.srv_name = srv_name
+        self.js_topic_name = js_topic_name
+
+        self._srv = rospy.ServiceProxy(self.srv_name, moveit_msgs.srv.GetPositionFK)
+        self._srv.wait_for_service()
+
+    def terminate(self):
+        """Terminate the service proxy.
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        self._srv.close()
+
+    # def get_fk(self, fk_link_names, joint_names, positions, frame_id='base_link'):
+    #     """Get the forward kinematics of a joint configuration.
+    #
+    #     Arguments
+    #     ----------
+    #     - fk_link_names: [str, str, ...]
+    #         List of links that we want to get the forward kinematics from
+    #
+    #     - joint_names: [str, str, ...]
+    #         With the joint names to set a position to ask for the FK
+    #
+    #     - positions: [float, float, ...]
+    #         Positions of joints
+    #
+    #     - frame_id: str
+    #         The reference frame to be used
+    #
+    #     Returns
+    #     ----------
+    #     - fk_result: moveit.srv.GetPositionFKResponse
+    #         The result of the forward kinematics service
+    #
+    #     """
+    #     fk_request = moveit_msgs.srv.GetPositionFKRequest()
+    #     fk_request.fk_link_names = fk_link_names
+    #     fk_request.robot_state.joint_state = joint_names
+    #     fk_request.robot_state.joint_state.position = positions
+    #     fk_request.header.frame_id = frame_id
+    #
+    #     fk_result = self._srv.call(fk_request)
+    #     return fk_result
+
+    def get_fk(self, fk_link_names, joint_states_msg, frame_id='base_link'):
+        """Get the forward kinematics of a joint configuration.
+
+        Arguments
+        ----------
+        - fk_link_names: [str, str, ...]
+            List of links that we want to get the forward kinematics from
+
+        - joint_states_msg: trajectory.msg.JointState
+            Joint states message
+
+        - frame_id: str
+            The reference frame to be used
+
+        Returns
+        ----------
+        - fk_result: moveit.srv.GetPositionFKResponse
+            The result of the forward kinematics service
+
+        """
+        fk_request = moveit_msgs.srv.GetPositionFKRequest()
+        if isinstance(fk_link_names, str):
+            fk_request.fk_link_names.append(fk_link_names)
+        elif isinstance(fk_link_names, (list, tuple)):
+            fk_request.fk_link_names = fk_link_names
+        else:
+            raise TypeError("Invalid 'fk_link_names' type: {}".format(type(fk_link_names)))
+        fk_request.robot_state.joint_state = joint_states_msg
+        fk_request.header.frame_id = frame_id
+        fk_request.header.stamp = rospy.Time.now()
+
+        fk_response = self._srv.call(fk_request)
+
+        return fk_response
+
+    def get_current_fk(self, fk_link_names, frame_id='base_link'):
+        """Get the current forward kinematics of a set of links.
+
+        Arguments
+        ----------
+        - fk_link_names: [str, str, ...]
+            List of links that we want to get the forward kinematics from
+
+        - frame_id: str
+            The reference frame to be used
+
+        Returns
+        ----------
+        - fk_result: moveit_msgs.srv.GetPositionFKResponse
+            The result of the forward kinematics service
+
+        """
+        # Subscribe to a joint_states
+        js = rospy.wait_for_message(self.js_topic_name, JointState)
+
+        # Call FK service
+        fk_result = self.get_fk(fk_link_names, js.name, js.position, frame_id)
+
+        return fk_result
+
+
+class InverseKinematics:
+    """Interface to MoveIt! inverse kinematics service."""
+
+    def __init__(self, srv_name='/compute_ik'):
+        """Interface to MoveIt! inverse kinematics service.
+
+        Arguments
+        ----------
+        - srv_name: str
+            The name of the MoveIt! inverse kinematics service
+
+        Returns
+        ----------
+
+        """
+        self.srv_name = srv_name
+
+        self._srv = rospy.ServiceProxy(self.srv_name, moveit_msgs.srv.GetPositionIK)
+        self._srv.wait_for_service()
+
+    def terminate(self):
+        """Terminate the service proxy.
+
+        Arguments
+        ----------
+
+        Returns
+        ----------
+
+        """
+        self._srv.close()
+
+    def get_ik(self, group_name, ik_link_name, joint_states_msg, pose_stamped, avoid_collisions=True, attempts=None,
+               constraints=None):
+        """Get the inverse kinematics with a link in a pose in 3d world.
+
+        Arguments
+        ----------
+        - group_name: str
+            Group name, i.e. 'right_arm'
+
+        - ik_link_name: str
+            Link that will be in the pose given to evaluate the IK
+
+        - joint_states_msg: JointState
+            Current joint states
+
+        - pose_stamped: PoseStamped
+            The pose with frame_id of the link
+
+        - avoid_collisions: Bool
+            If we want solutions with collision avoidance
+
+        - attempts: Int
+            Number of attempts to get an IK
+
+        - robot_state: RobotState
+            The robot state where to start searching IK from (optional, current pose will be used if ignored)
+
+        - constraints: Constraints
+            The robot state constraints
+
+        Returns
+        ----------
+        - ik_result: moveit_msgs.srv.GetPositionIKResponse
+            The result of the inverse kinematics service
+
+        """
+        assert isinstance(joint_states_msg, JointState), "Invalid joint states!"
+        assert isinstance(pose_stamped, PoseStamped), "Invalid pose!"
+
+        ik_request = moveit_msgs.srv.GetPositionIKRequest()
+        ik_request.ik_request.group_name = group_name
+        ik_request.ik_request.ik_link_name = ik_link_name
+        ik_request.ik_request.robot_state.joint_state = joint_states_msg
+        ik_request.ik_request.avoid_collisions = avoid_collisions
+        ik_request.ik_request.pose_stamped = pose_stamped
+        if attempts:
+            ik_request.ik_request.attempts = attempts
+        # else:
+        #     ik_request.ik_request.attempts = 5
+        if constraints:
+            ik_request.ik_request.constraints = constraints
+
+        ik_response = self._srv.call(ik_request)
+
+        return ik_response
 
 
 class StateValidity:
     """Interface to MoveIt! StateValidity service."""
+
     def __init__(self, srv_name='/check_state_validity'):
         """Interface to MoveIt! StateValidity service.
 

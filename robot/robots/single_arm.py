@@ -271,45 +271,54 @@ class SingleArm(Robot):
         else:
             arm_action = action
 
-        # Update the controller goal if this is a new policy step
-        if policy_step:
-            self.controller.set_goal(arm_action)
-
-        # Now run the controller for a step
-        pos, quat = self.controller.run_controller()
+        # # Update the controller goal if this is a new policy step
+        # if policy_step:
+        #     self.controller.set_goal(arm_action)
+        #
+        # # Now run the controller for a step
+        # pos, quat = self.controller.run_controller()
 
         # Clip the torques
         # low, high = self.torque_limits
         # self.torques = np.clip(torques, low, high)
         # TODO (chongyi zheng): may be we should clip the 3d positions.
         #  Note: self.position_limits are joint position limits
-        self.pose = np.concatenate([pos, quat])
+        # if self.pose is None:
+        #     self.last_pose = self.pose = np.concatenate([pos, quat])
+        # else:
+        #     self.last_pose = self.pose.copy()
+        #     self.pose = np.concatenate([pos, quat])
 
-        # Get gripper action, if applicable
-        if self.has_gripper:
-            self.grip_action(gripper_action)
+        # if not np.allclose(self.last_pose, self.pose, atol=1e-2) and policy_step:
+        #     print("Not all close")
+
+        # Get gripper action, if applicables
+        # if self.has_gripper:
+        #     self.grip_action(gripper_action)
 
         # Apply joint torque control
         # self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
         # Apply pose control
-        self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
+        # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
+        # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
+        self.sim.jog_eef_pose(arm_action[:3], arm_action[3:])
 
         # If this is a policy step, also update buffers holding recent values of interest
-        if policy_step:
-            # Update proprioceptive values
-            self.recent_qpos.push(self._joint_positions)
-            self.recent_actions.push(action)
-            # self.recent_torques.push(self.torques)
-            # self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
-            self.recent_ee_pose.push(np.concatenate((self.controller.ee_pos, T.mat2quat(self.controller.ee_ori_mat))))
-            self.recent_ee_vel.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
-
-            # Estimation of eef acceleration (averaged derivative of recent velocities)
-            self.recent_ee_vel_buffer.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
-            diffs = np.vstack([self.recent_ee_acc.current,
-                               self.control_freq * np.diff(self.recent_ee_vel_buffer.buf, axis=0)])
-            ee_acc = np.array([np.convolve(col, np.ones(10) / 10., mode='valid')[0] for col in diffs.transpose()])
-            self.recent_ee_acc.push(ee_acc)
+        # if policy_step:
+        #     # Update proprioceptive values
+        #     self.recent_qpos.push(self._joint_positions)
+        #     self.recent_actions.push(action)
+        #     # self.recent_torques.push(self.torques)
+        #     # self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
+        #     self.recent_ee_pose.push(np.concatenate((self.controller.ee_pos, T.mat2quat(self.controller.ee_ori_mat))))
+        #     self.recent_ee_vel.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
+        #
+        #     # Estimation of eef acceleration (averaged derivative of recent velocities)
+        #     self.recent_ee_vel_buffer.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
+        #     diffs = np.vstack([self.recent_ee_acc.current,
+        #                        self.control_freq * np.diff(self.recent_ee_vel_buffer.buf, axis=0)])
+        #     ee_acc = np.array([np.convolve(col, np.ones(10) / 10., mode='valid')[0] for col in diffs.transpose()])
+        #     self.recent_ee_acc.push(ee_acc)
 
     def grip_action(self, gripper_action):
         """

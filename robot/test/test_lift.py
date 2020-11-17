@@ -5,6 +5,7 @@ from robot.environments.lift import Lift
 import robosuite as suite
 from robosuite import load_controller_config
 from robosuite.utils.input_utils import input2action
+from robot.utils.input_utils import input2action
 
 
 if __name__ == "__main__":
@@ -79,13 +80,14 @@ if __name__ == "__main__":
 
     # initialize device
     if args.device == "keyboard":
-        from robosuite.devices import Keyboard
+        from robot.devices import Keyboard
 
         device = Keyboard(pos_sensitivity=args.pos_sensitivity, rot_sensitivity=args.rot_sensitivity)
+        device.start_listen()
         # TODO (chongyi zheng): current viewer is empty
-        env.viewer.add_keypress_callback("any", device.on_press)
-        env.viewer.add_keyup_callback("any", device.on_release)
-        env.viewer.add_keyrepeat_callback("any", device.on_press)
+        # env.viewer.add_keypress_callback("any", device.on_press)
+        # env.viewer.add_keyup_callback("any", device.on_release)
+        # env.viewer.add_keyrepeat_callback("any", device.on_press)
     elif args.device == "spacemouse":
         from robosuite.devices import SpaceMouse
 
