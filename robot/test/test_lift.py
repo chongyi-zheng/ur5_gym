@@ -58,7 +58,7 @@ if __name__ == "__main__":
         use_camera_obs=False,
         gripper_visualizations=True,
         reward_shaping=True,
-        control_freq=50,
+        control_freq=50,  # 20, 50, 100
         hard_reset=False,
     )
     # env = suite.make(
