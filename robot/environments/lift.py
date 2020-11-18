@@ -357,8 +357,6 @@ class Lift(RobotEnv):
         """
         Resets simulation internal configurations.
         """
-        super()._reset_internal()
-
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
@@ -370,6 +368,8 @@ class Lift(RobotEnv):
                 # TODO (chongyi zheng): set_joint_qpos with ROS service
                 # self.sim.data.set_joint_qpos(obj_name + "_jnt0", np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
                 self.sim.set_joint_qpos(obj_name + "_jnt0", np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
+
+        super()._reset_internal()
 
     def _get_observation(self):
         """

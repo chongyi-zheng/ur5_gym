@@ -1,5 +1,6 @@
 from robot.environments.base import make
 
+from robot.environments.lift import Lift
 # from robosuite.environments.lift import Lift
 # from robosuite.environments.stack import Stack
 # from robosuite.environments.nut_assembly import NutAssembly
