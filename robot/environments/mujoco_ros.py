@@ -21,17 +21,16 @@ class MujocoROSError(Exception):
 
 
 class MujocoROS:
-    def __init__(self, node_name='mujoco_ros', prefix='/mujoco_ros', manipulator_group_name='manipulator',
-                 gripper_group_name='gripper', fk_srv='/compute_fk', ik_srv='/compute_ik',
-                 state_validity_srv='/check_state_validity', joint_state_msg='/joint_states'):
+    def __init__(self, node_name="mujoco_ros", prefix="/mujoco_ros", manipulator_group_name="manipulator",
+                 gripper_group_name="gripper", state_validity_srv="/check_state_validity", jog_topic="/jog_frame",
+                 joint_state_topic="/joint_states"):
         self.node_name = node_name
         self.prefix = prefix
         self.manipulator_group_name = manipulator_group_name
         self.gripper_group_name = gripper_group_name
-        self.fk_srv = fk_srv
-        self.ik_srv = ik_srv
+        self.jog_topic = jog_topic
         self.state_validity_srv = state_validity_srv
-        self.joint_state_msg = joint_state_msg
+        self.joint_state_topic = joint_state_topic
 
         # ROS node
         rospy.init_node(self.node_name, anonymous=True)
@@ -46,7 +45,7 @@ class MujocoROS:
         # jog
         # reference: https://github.com/tork-a/jog_control
         # self._jog_time_from_start = self._get_param("/jog/time_from_start")
-        # self._jog_group = self._get_param("/jog/group")
+        self._jog_group = self._get_param("/jog/group")
         self._jog_target_link = self._get_param("/jog/target_link")
         self._jog_base_link = self._get_param("/jog/base_link")
         # self._jog_controllers = self._get_controllers()
@@ -55,13 +54,14 @@ class MujocoROS:
         # self._act_pos = None
         # self._act_quat = None
 
+        self._jog_frame_msg = jog_msgs.msg.JogFrame()
+        self._jog_frame_pub = rospy.Publisher(self.jog_topic, jog_msgs.msg.JogFrame, queue_size=1)
+
         # misc
         try:
             self._joint_names = self._get_param("/robot_joints")
         except MujocoROSError:
             self._joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._fk = ForwardKinematics(self.fk_srv)
-        self._ik = InverseKinematics(self.ik_srv)
         self._state_validity = StateValidity(self.state_validity_srv)
 
     def _get_param(self, param_name, selections=None):
@@ -84,10 +84,10 @@ class MujocoROS:
         controller_params = self._get_param("/move_group/controller_list")
         controllers = {}
         for controller_param in controller_params:
-            if not "name" in controller_param:
+            if "name" not in controller_param:
                 raise MujocoROSError("Name must be specified for each controller!")
 
-            if not "joints" in controller_param:
+            if "joints" not in controller_param:
                 raise MujocoROSError("Joints must be specified for each controller!")
 
             if "action_ns" in controller_param:
@@ -240,7 +240,7 @@ class MujocoROS:
         joint_states_msg = None
         if ros:
             try:
-                joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+                joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             except rospy.ROSException as e:
                 MujocoROSError("Message read failed: {}".format(e))
         else:
@@ -267,7 +267,7 @@ class MujocoROS:
         joint_states_msg = None
         if ros:
             try:
-                joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+                joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             except rospy.ROSException as e:
                 MujocoROSError("Message read failed: {}".format(e))
         else:
@@ -466,7 +466,7 @@ class MujocoROS:
     def move_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw"):
         joint_states_msg = None
         try:
-            joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
         except rospy.ROSException as e:
             MujocoROSError("Message read failed: {}".format(e))
 
@@ -532,12 +532,29 @@ class MujocoROS:
     def jog_eef_pose(self, linear_delta, angular_delta):
         """Send jog message directly"""
 
-        jog_frame = jog_msgs.msg.JogFrame()
-        jog_frame.header.stamp =
+        # if (rospy.Time.now() - self._jog_frame_msg.header.stamp).to_sec() > 0.1:
+        jog_frame_msg = jog_msgs.msg.JogFrame()
+        jog_frame_msg.header.stamp = rospy.Time.now()
+        jog_frame_msg.header.frame_id = self._jog_base_link
+        jog_frame_msg.group_name = self._jog_group
+        jog_frame_msg.link_name = self._jog_target_link
+        jog_frame_msg.linear_delta.x = linear_delta[0]
+        jog_frame_msg.linear_delta.y = linear_delta[1]
+        jog_frame_msg.linear_delta.z = linear_delta[2]
+        jog_frame_msg.angular_delta.x = angular_delta[0]
+        jog_frame_msg.angular_delta.y = angular_delta[1]
+        jog_frame_msg.angular_delta.z = angular_delta[2]
+
+        # Publish only if the all command are not equal zero
+        # Not good, we need to compare slider value by some way...
+        if jog_frame_msg.linear_delta.x != 0 or jog_frame_msg.linear_delta.y != 0 or \
+            jog_frame_msg.linear_delta.z != 0 or jog_frame_msg.angular_delta.x != 0 or \
+            jog_frame_msg.angular_delta.y != 0 or jog_frame_msg.angular_delta.z != 0:
+            self._jog_frame_pub.publish(jog_frame_msg)
 
         # joint_states_msg = None
         # try:
-        #     joint_states_msg = rospy.wait_for_message(self.joint_state_msg, sensor_msgs.msg.JointState, 3)
+        #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
         #
