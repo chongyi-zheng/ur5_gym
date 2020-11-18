@@ -1,12 +1,13 @@
 import argparse
 import numpy as np
 
-from robot.environments.lift import Lift
-import robosuite as suite
+# TODO (chongyi zheng): delete useless code below
+# from robot.environments.lift import Lift
+# import robosuite as suite
+import robot
 from robosuite import load_controller_config
-from robosuite.utils.input_utils import input2action
+# from robosuite.utils.input_utils import input2action
 from robot.utils.input_utils import input2action
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -19,8 +20,8 @@ if __name__ == "__main__":
     parser.add_argument("--toggle-camera-on-click", action="store_true", help="Switch camera angle on gripper click")
     parser.add_argument("--controller", type=str, default="osc", help="Choice of controller. Can be 'ik' or 'osc'")
     parser.add_argument("--device", type=str, default="keyboard")
-    parser.add_argument("--pos-sensitivity", type=float, default=1.5, help="How much to scale position user inputs")
-    parser.add_argument("--rot-sensitivity", type=float, default=1.5, help="How much to scale rotation user inputs")
+    parser.add_argument("--pos-sensitivity", type=float, default=0.125, help="How much to scale position user inputs")
+    parser.add_argument("--rot-sensitivity", type=float, default=1.0, help="How much to scale rotation user inputs")
     args = parser.parse_args()
 
     # Import controller config for EE IK or OSC (pos/ori)
@@ -37,19 +38,31 @@ if __name__ == "__main__":
 
     # Create argument configuration
     config = {
-        # "env_name": args.environment,  # TODO (chongyi zheng): Lift
+        "env_name": args.environment,
         "robots": args.robots,
         "controller_configs": controller_config,
     }
 
     # Check if we're using a multi-armed environment and use env_configuration argument if so
-    # if "TwoArm" in args.environment:
-    #     config["env_configuration"] = args.config
-    # else:
-    #     args.config = None
+    if "TwoArm" in args.environment:
+        config["env_configuration"] = args.config
+    else:
+        args.config = None
 
     # Create environment
-    env = Lift(
+    # env = Lift(
+    #     **config,
+    #     has_renderer=True,
+    #     has_offscreen_renderer=False,
+    #     render_camera="frontview",  # "agentview"
+    #     ignore_done=True,
+    #     use_camera_obs=False,
+    #     gripper_visualizations=True,
+    #     reward_shaping=True,
+    #     control_freq=50,  # 20, 50, 100
+    #     hard_reset=False,
+    # )
+    env = robot.make(
         **config,
         has_renderer=True,
         has_offscreen_renderer=False,
@@ -61,18 +74,6 @@ if __name__ == "__main__":
         control_freq=50,  # 20, 50, 100
         hard_reset=False,
     )
-    # env = suite.make(
-    #     **config,
-    #     has_renderer=True,
-    #     has_offscreen_renderer=False,
-    #     render_camera="agentview",
-    #     ignore_done=True,
-    #     use_camera_obs=False,
-    #     gripper_visualizations=True,
-    #     reward_shaping=True,
-    #     control_freq=20,
-    #     hard_reset=False,
-    # )
 
     # TODO (chongyi zheng): reserve for further test
     # Setup printing options for numbers
