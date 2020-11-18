@@ -293,8 +293,8 @@ class SingleArm(Robot):
         #     print("Not all close")
 
         # Get gripper action, if applicables
-        # if self.has_gripper:
-        #     self.grip_action(gripper_action)
+        if self.has_gripper:
+            self.grip_action(gripper_action)
 
         # Apply joint torque control
         # self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
@@ -334,10 +334,11 @@ class SingleArm(Robot):
         ctrl_range = np.array(self.sim.get_joint_limits(self.gripper_joints, 'pos'))
         bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
         weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
-        applied_gripper_action = bias + weight * gripper_action_actual
+        applied_gripper_joint = bias + weight * gripper_action_actual
         # self.sim.data.ctrl[self._ref_joint_gripper_actuator_indexes] = applied_gripper_action
-        gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_action))
-        self.sim.goto_gripper_positions(gripper_joint_positions, wait=False)
+        # current_gripper_joint = self.sim.get_joint_pos(self.gripper_joints)
+        gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_joint))
+        self.sim.goto_gripper_positions(gripper_joint_positions)
 
     def visualize_gripper(self):
         """

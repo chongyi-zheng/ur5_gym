@@ -11,8 +11,7 @@ import jog_msgs.msg
 
 import numpy as np
 
-from robot.environments.ros_util import ForwardKinematics, InverseKinematics, StateValidity
-import robosuite.utils.transform_utils as T
+from robot.environments.ros_util import StateValidity
 
 
 class MujocoROSError(Exception):
@@ -22,13 +21,14 @@ class MujocoROSError(Exception):
 
 class MujocoROS:
     def __init__(self, node_name="mujoco_ros", prefix="/mujoco_ros", manipulator_group_name="manipulator",
-                 gripper_group_name="gripper", state_validity_srv="/check_state_validity", jog_topic="/jog_frame",
-                 joint_state_topic="/joint_states"):
+                 gripper_group_name="gripper", state_validity_srv="/check_state_validity",
+                 jog_frame_topic="/jog_frame", jog_joint_topic="/jog_joint", joint_state_topic="/joint_states"):
         self.node_name = node_name
         self.prefix = prefix
         self.manipulator_group_name = manipulator_group_name
         self.gripper_group_name = gripper_group_name
-        self.jog_topic = jog_topic
+        self.jog_frame_topic = jog_frame_topic
+        self.jog_joint_topic = jog_joint_topic
         self.state_validity_srv = state_validity_srv
         self.joint_state_topic = joint_state_topic
 
@@ -48,14 +48,15 @@ class MujocoROS:
         self._jog_group = self._get_param("/jog/group")
         self._jog_target_link = self._get_param("/jog/target_link")
         self._jog_base_link = self._get_param("/jog/base_link")
-        # self._jog_controllers = self._get_controllers()
-        #
+        self._jog_joint_names = self._get_param("/jog_joint_node/joint_names")
+        self._jog_controllers = self._get_controllers()
+
         # self._last_time = rospy.Time.now()
         # self._act_pos = None
         # self._act_quat = None
 
-        self._jog_frame_msg = jog_msgs.msg.JogFrame()
-        self._jog_frame_pub = rospy.Publisher(self.jog_topic, jog_msgs.msg.JogFrame, queue_size=1)
+        self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=1)
+        self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
 
         # misc
         try:
@@ -463,71 +464,71 @@ class MujocoROS:
         # it is always good to clear your targets after planning with poses.
         # self._moveit_manipulator_group.clear_pose_targets()
 
-    def move_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw"):
-        joint_states_msg = None
-        try:
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
-        except rospy.ROSException as e:
-            MujocoROSError("Message read failed: {}".format(e))
-
-        # fk_response = self._fk.get_fk(self._jog_target_link, joint_states_msg, self._jog_base_link)
-        # if fk_response.error_code.val != moveit_msgs.msg.MoveItErrorCodes.SUCCESS:
-        #     print("****FK {} error: {}".format(fk_response, fk_response.error_code.val))
-        #     return
-        #
-        # if len(fk_response.pose_stamped) != 1:
-        #     raise rospy.ServiceException("fk {} multiple poses!".format(fk_response))
-
-        # Apply jog
-        ref_pose = geometry_msgs.msg.PoseStamped()
-        ref_pose.header.frame_id = self._jog_base_link
-        ref_pose.header.stamp = rospy.Time.now()
-        ref_pose.pose.position.x = eef_pos[0]
-        ref_pose.pose.position.y = eef_pos[1]
-        ref_pose.pose.position.z = eef_pos[2]
-
-        if quat_format == "xyzw":
-            ref_pose.pose.orientation.x = eef_quat[0]
-            ref_pose.pose.orientation.y = eef_quat[1]
-            ref_pose.pose.orientation.z = eef_quat[2]
-            ref_pose.pose.orientation.w = eef_quat[3]
-        elif quat_format == "wxyz":
-            ref_pose.pose.orientation.w = eef_quat[0]
-            ref_pose.pose.orientation.x = eef_quat[1]
-            ref_pose.pose.orientation.y = eef_quat[2]
-            ref_pose.pose.orientation.z = eef_quat[3]
-
-        # Solve inverse kinematics
-        ik_response = self._ik.get_ik(self._jog_group, self._jog_target_link, joint_states_msg, ref_pose)
-        if ik_response.error_code.val != moveit_msgs.msg.MoveItErrorCodes.SUCCESS:
-            print("****IK error: {}".format(ik_response.error_code.val))
-            return
-
-        solution_joint_states = ik_response.solution.joint_state
-        index_map = dict((name, idx) for idx, name in enumerate(solution_joint_states.name))
-        solution_joint_positions = [solution_joint_states.position[index_map[name]] for name in joint_states_msg.name]
-        max_err = np.max(np.array(solution_joint_positions) - np.array(joint_states_msg.position))
-        if max_err > np.pi / 2:
-            print("**** Validation check Failed: {}".format(max_err))
-            return
-        elif max_err < 1e-3:
-            return
-
-        # Publish trajectory message for each controller
-        for controller_key, controller_val in self._jog_controllers.items():
-            point = trajectory_msgs.msg.JointTrajectoryPoint()
-            point.positions = [solution_joint_states.position[index_map[name]] for name in controller_val["joints"]]
-            point.velocities = []
-            point.accelerations = []
-            point.time_from_start = rospy.Duration(self._jog_time_from_start)
-
-            traj = trajectory_msgs.msg.JointTrajectory()
-            traj.header.stamp = rospy.Time.now()
-            traj.header.frame_id = self._jog_base_link
-            traj.joint_names = controller_val["joints"]
-            traj.points.append(point)
-
-            controller_val["traj_pub"].publish(traj)
+    # def move_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw"):
+    #     joint_states_msg = None
+    #     try:
+    #         joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
+    #     except rospy.ROSException as e:
+    #         MujocoROSError("Message read failed: {}".format(e))
+    #
+    #     # fk_response = self._fk.get_fk(self._jog_target_link, joint_states_msg, self._jog_base_link)
+    #     # if fk_response.error_code.val != moveit_msgs.msg.MoveItErrorCodes.SUCCESS:
+    #     #     print("****FK {} error: {}".format(fk_response, fk_response.error_code.val))
+    #     #     return
+    #     #
+    #     # if len(fk_response.pose_stamped) != 1:
+    #     #     raise rospy.ServiceException("fk {} multiple poses!".format(fk_response))
+    #
+    #     # Apply jog
+    #     ref_pose = geometry_msgs.msg.PoseStamped()
+    #     ref_pose.header.frame_id = self._jog_base_link
+    #     ref_pose.header.stamp = rospy.Time.now()
+    #     ref_pose.pose.position.x = eef_pos[0]
+    #     ref_pose.pose.position.y = eef_pos[1]
+    #     ref_pose.pose.position.z = eef_pos[2]
+    #
+    #     if quat_format == "xyzw":
+    #         ref_pose.pose.orientation.x = eef_quat[0]
+    #         ref_pose.pose.orientation.y = eef_quat[1]
+    #         ref_pose.pose.orientation.z = eef_quat[2]
+    #         ref_pose.pose.orientation.w = eef_quat[3]
+    #     elif quat_format == "wxyz":
+    #         ref_pose.pose.orientation.w = eef_quat[0]
+    #         ref_pose.pose.orientation.x = eef_quat[1]
+    #         ref_pose.pose.orientation.y = eef_quat[2]
+    #         ref_pose.pose.orientation.z = eef_quat[3]
+    #
+    #     # Solve inverse kinematics
+    #     ik_response = self._ik.get_ik(self._jog_group, self._jog_target_link, joint_states_msg, ref_pose)
+    #     if ik_response.error_code.val != moveit_msgs.msg.MoveItErrorCodes.SUCCESS:
+    #         print("****IK error: {}".format(ik_response.error_code.val))
+    #         return
+    #
+    #     solution_joint_states = ik_response.solution.joint_state
+    #     index_map = dict((name, idx) for idx, name in enumerate(solution_joint_states.name))
+    #     solution_joint_positions = [solution_joint_states.position[index_map[name]] for name in joint_states_msg.name]
+    #     max_err = np.max(np.array(solution_joint_positions) - np.array(joint_states_msg.position))
+    #     if max_err > np.pi / 2:
+    #         print("**** Validation check Failed: {}".format(max_err))
+    #         return
+    #     elif max_err < 1e-3:
+    #         return
+    #
+    #     # Publish trajectory message for each controller
+    #     for controller_key, controller_val in self._jog_controllers.items():
+    #         point = trajectory_msgs.msg.JointTrajectoryPoint()
+    #         point.positions = [solution_joint_states.position[index_map[name]] for name in controller_val["joints"]]
+    #         point.velocities = []
+    #         point.accelerations = []
+    #         point.time_from_start = rospy.Duration(self._jog_time_from_start)
+    #
+    #         traj = trajectory_msgs.msg.JointTrajectory()
+    #         traj.header.stamp = rospy.Time.now()
+    #         traj.header.frame_id = self._jog_base_link
+    #         traj.joint_names = controller_val["joints"]
+    #         traj.points.append(point)
+    #
+    #         controller_val["traj_pub"].publish(traj)
 
     def jog_eef_pose(self, linear_delta, angular_delta):
         """Send jog message directly"""
@@ -652,15 +653,48 @@ class MujocoROS:
         # self._act_pos = ref_pos
         # self._act_quat = ref_quat
 
-    def goto_gripper_positions(self, gripper_joint_positions, wait=True):
-        if self.is_position_valid(gripper_joint_positions):
-            # go to target joint positions
-            self._moveit_gripper_group.go(gripper_joint_positions, wait=wait)
+    def goto_gripper_positions(self, gripper_joint_positions):
+        # jog_joint_msg = jog_msgs.msg.JogJoint()
+        # jog_joint_msg.header.stamp = rospy.Time.now()
+        # jog_joint_msg.joint_names = self._jog_joint_names
+        # # index of 'gripper0_finger_joint' = 0
+        # deltas = np.zeros(len(self._jog_joint_names))
+        # index_maps = dict((name, idx) for idx, name in enumerate(self._jog_joint_names))
+        # indices = [index_maps[gripper_joint_name] for gripper_joint_name in gripper_joint_deltas]
+        # deltas[indices] = np.array(list(gripper_joint_deltas.values()))
+        # jog_joint_msg.deltas = deltas.tolist()
+        #
+        # if np.any(deltas):
+        #     self._jog_joint_pub.publish(jog_joint_msg)
 
-            # calling `stop()` ensures that there is no residual movement
-            # self._moveit_gripper_group.stop()
-        else:
-            raise MujocoROSError("Invalid joint positions: {}".format(gripper_joint_positions))
+        # Publish trajectory message for each controller
+        for controller_key, controller_val in self._jog_controllers.items():
+            if 'gripper' in controller_key:
+                index_maps = dict((name, idx) for idx, name in enumerate(gripper_joint_positions.keys()))
+                indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+
+                point = trajectory_msgs.msg.JointTrajectoryPoint()
+                point.positions = np.array(list(gripper_joint_positions.values()))[indices].tolist()
+                point.velocities = []
+                point.accelerations = []
+                point.time_from_start = rospy.Duration().from_sec(1.0)
+
+                traj = trajectory_msgs.msg.JointTrajectory()
+                traj.header.stamp = rospy.Time.now()
+                traj.joint_names = controller_val["joints"]
+                traj.points.append(point)
+
+                controller_val["traj_pub"].publish(traj)
+
+    # def goto_gripper_positions(self, gripper_joint_positions, wait=True):
+    #     if self.is_position_valid(gripper_joint_positions):
+    #         # go to target joint positions
+    #         self._moveit_gripper_group.go(gripper_joint_positions, wait=wait)
+    #
+    #         # calling `stop()` ensures that there is no residual movement
+    #         # self._moveit_gripper_group.stop()
+    #     else:
+    #         raise MujocoROSError("Invalid joint positions: {}".format(gripper_joint_positions))
 
     def open_gripper(self, wait=True):
         target_values = self._moveit_gripper_group.get_named_target_values('open')
