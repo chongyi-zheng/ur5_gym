@@ -59,10 +59,11 @@ class MujocoROS:
         self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
 
         # misc
-        try:
-            self._joint_names = self._get_param("/robot_joints")
-        except MujocoROSError:
-            self._joint_names = self._moveit_manipulator_group.get_active_joints()
+        # try:
+        #     self._joint_names = self._get_param("/robot_joints")
+        # except MujocoROSError:
+        #     self._joint_names = self._moveit_manipulator_group.get_active_joints()
+        self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
         self._state_validity = StateValidity(self.state_validity_srv)
 
     def _get_param(self, param_name, selections=None):
@@ -333,13 +334,13 @@ class MujocoROS:
         return eef_quat
 
     def get_eef_vel(self):
-        joint_values = self.get_joint_pos(self._joint_names)
+        joint_values = self.get_joint_pos(self._arm_joint_names)
         jac_mat = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
         index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
-        index = [index_map[name] for name in self._joint_names]
+        index = [index_map[name] for name in self._arm_joint_names]
         jac_mat = jac_mat[:, index]  # switch columns
 
-        joint_velocities = self.get_joint_vel(self._joint_names)
+        joint_velocities = self.get_joint_vel(self._arm_joint_names)
         eef_vel = np.matmul(jac_mat, joint_velocities)
 
         return eef_vel

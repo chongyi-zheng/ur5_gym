@@ -339,6 +339,7 @@ class SingleArm(Robot):
         # current_gripper_joint = self.sim.get_joint_pos(self.gripper_joints)
         gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_joint))
         self.sim.goto_gripper_positions(gripper_joint_positions)
+        # self.sim.set_joint_qpos(self.gripper_joints, applied_gripper_joint)
 
     def visualize_gripper(self):
         """
