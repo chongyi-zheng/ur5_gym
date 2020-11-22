@@ -1,9 +1,10 @@
 import rospy
 import mujoco_ros_msgs.msg
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
-    SetFixedCamera, SetFixedCameraRequest
-import moveit_msgs.msg
+    SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, Reset, ResetRequest
 import moveit_commander
+import moveit_msgs.msg
+import std_msgs.msg
 import sensor_msgs.msg
 import geometry_msgs.msg
 import trajectory_msgs.msg
@@ -393,12 +394,30 @@ class MujocoROS:
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
-    def set_joint_qpos(self, name, value):
-        request = SetJointQPosRequest(name=name, value=value)
+    def set_joint_qpos(self, names, values):
+        if not isinstance(names, (list, tuple)):
+            names = [names]
+            values = [values]
+
+        request = SetJointQPosRequest()
+        request.name = names
+        for value in values:
+            multi_array = std_msgs.msg.Float64MultiArray()
+            multi_array.data = [value] if isinstance(value, (float, np.float)) else value
+            request.value.append(multi_array)
         rospy.wait_for_service(self.prefix + '/set_joint_qpos', 3)
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_joint_qpos", SetJointQPos)
             set_joint_qpos_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    def set_ctrl(self, names, ctrls):
+        request = SetCtrlRequest(name=names, ctrl=ctrls)
+        rospy.wait_for_service(self.prefix + '/set_ctrl', 3)
+        try:
+            set_ctrl_srv = rospy.ServiceProxy(self.prefix + "/set_ctrl", SetCtrl)
+            set_ctrl_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
@@ -408,6 +427,15 @@ class MujocoROS:
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_vopt_geomgroup", SetOptGeomGroup)
             set_joint_qpos_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    def reset(self):
+        request = ResetRequest()
+        rospy.wait_for_service(self.prefix + '/reset', 3)
+        try:
+            reset_srv = rospy.ServiceProxy(self.prefix + "/reset", Reset)
+            reset_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 

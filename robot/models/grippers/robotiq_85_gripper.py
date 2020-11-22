@@ -40,8 +40,8 @@ class Robotiq85GripperBase(GripperModel):
     @property
     def _actuators(self):
         return [
-            "finger_1",
-            "finger_2",
+            "finger_pos",
+            "right_outer_knuckle_pos",
         ]
 
     @property

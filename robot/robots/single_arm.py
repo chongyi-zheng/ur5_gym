@@ -183,7 +183,12 @@ class SingleArm(Robot):
         Args:
             deterministic (bool): If true, will not randomize initializations within the sim
         """
-        # First, run the superclass method to reset the position and controller
+        # First, go to the default pose
+        init_joint_positions = dict(zip(self.robot_joints, self.robot_model.up_qpos))
+        self.sim.goto_arm_positions(init_joint_positions)
+        self.sim.reset()
+
+        # Then, run the superclass method to reset the position and controller
         super().reset(deterministic)
 
         if not deterministic:
@@ -233,9 +238,10 @@ class SingleArm(Robot):
             #     self.sim.model.actuator_name2id(actuator)
             #     for actuator in self.gripper.actuators
             # ]
-            self._ref_gripper_joint_pos_indexes = self.sim.joint_pos_indexes(self.gripper_joints)
-            self._ref_gripper_joint_vel_indexes = self.sim.joint_vel_indexes(self.gripper_joints)
-            self._ref_joint_gripper_actuator_indexes = self.sim.actuator_name2id(self.gripper.actuators)
+            # TODO (chongyi zheng): Do we need this?
+            # self._ref_gripper_joint_pos_indexes = self.sim.joint_pos_indexes(self.gripper_joints)
+            # self._ref_gripper_joint_vel_indexes = self.sim.joint_vel_indexes(self.gripper_joints)
+            # self._ref_joint_gripper_actuator_indexes = self.sim.actuator_name2id(self.gripper.actuators)
 
         # IDs of sites for eef visualization
         # self.eef_site_id = self.sim.model.site_name2id(self.gripper.visualization_sites["grip_site"])
@@ -340,6 +346,8 @@ class SingleArm(Robot):
         gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_joint))
         self.sim.goto_gripper_positions(gripper_joint_positions)
         # self.sim.set_joint_qpos(self.gripper_joints, applied_gripper_joint)
+        # print("applied_gripper_joint: {}".format(applied_gripper_joint))
+        # self.sim.set_ctrl(self.gripper.actuators, applied_gripper_joint)
 
     def visualize_gripper(self):
         """
