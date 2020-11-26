@@ -41,7 +41,9 @@ class MujocoROS:
         # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
         # self._moveit_gripper_group = moveit_commander.MoveGroupCommander(self.gripper_group_name)
         self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        self._moveit_manipulator_group.allow_replanning(True)
         self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+        self._moveit_gripper_group.allow_replanning(True)
 
         # jog
         # reference: https://github.com/tork-a/jog_control
@@ -476,6 +478,7 @@ class MujocoROS:
         # TODO (chongyi zheng): check validity of pose
         # go to target pose
         self._moveit_manipulator_group.set_pose_target(pose)
+        self._moveit_manipulator_group.allow_replanning()
         self._moveit_manipulator_group.go(wait=wait)
 
         # calling `stop()` ensures that there is no residual movement
