@@ -1,7 +1,7 @@
 import rospy
 import mujoco_ros_msgs.msg
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
-    SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, Reset, ResetRequest
+    SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest
 import moveit_commander
 import moveit_msgs.msg
 import std_msgs.msg
@@ -430,15 +430,6 @@ class MujocoROS:
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
-    def reset(self):
-        request = ResetRequest()
-        rospy.wait_for_service(self.prefix + '/reset', 3)
-        try:
-            reset_srv = rospy.ServiceProxy(self.prefix + "/reset", Reset)
-            reset_srv(request)
-        except rospy.ServiceException as e:
-            raise MujocoROSError("Service call failed: {}".format(e))
-
     def is_position_valid(self, joint_positions):
         assert isinstance(joint_positions, dict) or isinstance(joint_positions, list) or \
                isinstance(joint_positions, np.ndarray), "Invalid joint positions to check!"
@@ -447,7 +438,7 @@ class MujocoROS:
         if isinstance(joint_positions, dict):
             rs.joint_state.name, rs.joint_state.position = list(joint_positions.keys()), list(joint_positions.values())
         else:
-            rs.joint_state.name, rs.joint_state.position = self._joint_names, list(joint_positions)
+            rs.joint_state.name, rs.joint_state.position = self._arm_joint_names, list(joint_positions)
         result = self._state_validity.get_state_validity(rs, self.manipulator_group_name)
 
         is_valid = result.valid
@@ -559,7 +550,7 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta):
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True):
         """Send jog message directly"""
 
         # if (rospy.Time.now() - self._jog_frame_msg.header.stamp).to_sec() > 0.1:
@@ -574,6 +565,7 @@ class MujocoROS:
         jog_frame_msg.angular_delta.x = angular_delta[0]
         jog_frame_msg.angular_delta.y = angular_delta[1]
         jog_frame_msg.angular_delta.z = angular_delta[2]
+        jog_frame_msg.avoid_collisions = avoid_collisions
 
         # Publish only if the all command are not equal zero
         # Not good, we need to compare slider value by some way...
@@ -682,7 +674,7 @@ class MujocoROS:
         # self._act_pos = ref_pos
         # self._act_quat = ref_quat
 
-    def goto_gripper_positions(self, gripper_joint_positions):
+    def goto_gripper_positions(self, gripper_joint_positions, time_from_start=1.0):
         # jog_joint_msg = jog_msgs.msg.JogJoint()
         # jog_joint_msg.header.stamp = rospy.Time.now()
         # jog_joint_msg.joint_names = self._jog_joint_names
@@ -706,7 +698,7 @@ class MujocoROS:
                 point.positions = np.array(list(gripper_joint_positions.values()))[indices].tolist()
                 point.velocities = []
                 point.accelerations = []
-                point.time_from_start = rospy.Duration().from_sec(1.0)
+                point.time_from_start = rospy.Duration().from_sec(time_from_start)
 
                 traj = trajectory_msgs.msg.JointTrajectory()
                 traj.header.stamp = rospy.Time.now()

@@ -183,12 +183,7 @@ class SingleArm(Robot):
         Args:
             deterministic (bool): If true, will not randomize initializations within the sim
         """
-        # First, go to the default pose
-        init_joint_positions = dict(zip(self.robot_joints, self.robot_model.up_qpos))
-        self.sim.goto_arm_positions(init_joint_positions)
-        self.sim.reset()
-
-        # Then, run the superclass method to reset the position and controller
+        # First, run the superclass method to reset the position and controller
         super().reset(deterministic)
 
         if not deterministic:
@@ -280,7 +275,8 @@ class SingleArm(Robot):
         # # Update the controller goal if this is a new policy step
         # if policy_step:
         #     self.controller.set_goal(arm_action)
-        #
+        scaled_arm_action = self.controller.scale_action(arm_action)
+
         # # Now run the controller for a step
         # pos, quat = self.controller.run_controller()
 
@@ -307,7 +303,7 @@ class SingleArm(Robot):
         # Apply pose control
         # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
-        self.sim.jog_eef_pose(arm_action[:3], arm_action[3:])
+        self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:

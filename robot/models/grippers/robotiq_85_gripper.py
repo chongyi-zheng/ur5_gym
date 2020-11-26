@@ -99,7 +99,7 @@ class Robotiq85Gripper(Robotiq85GripperBase):
 
     @property
     def speed(self):
-        return 0.01
+        return 2.0  # (chongyi zheng): default speed with torque control = 0.01
 
     @property
     def dof(self):
