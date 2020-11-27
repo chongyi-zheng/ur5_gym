@@ -2,6 +2,7 @@ import rospy
 import mujoco_ros_msgs.msg
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest
+from std_srvs.srv import Trigger, TriggerRequest
 import moveit_commander
 import actionlib
 import moveit_msgs.msg
@@ -440,6 +441,15 @@ class MujocoROS:
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_vopt_geomgroup", SetOptGeomGroup)
             set_joint_qpos_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    def reset(self):
+        request = TriggerRequest()
+        rospy.wait_for_service(self.prefix + '/reset', 3)
+        try:
+            reset_srv = rospy.ServiceProxy(self.prefix + "/reset", Trigger)
+            reset_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
