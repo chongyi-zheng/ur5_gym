@@ -706,9 +706,9 @@ class MujocoROS:
                     goal.trajectory.points.append(point)
 
                     if wait:
-                        controller_val["traj_client"].send_goal(goal)
-                    else:
                         controller_val["traj_client"].send_goal_and_wait(goal)
+                    else:
+                        controller_val["traj_client"].send_goal(goal)
         else:
             raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
 
