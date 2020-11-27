@@ -118,7 +118,7 @@ class Robot(object):
         # Set initial position in sim
         # self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
         init_joint_positions = dict(zip(self.robot_joints, init_qpos))
-        self.sim.goto_arm_positions(init_joint_positions)
+        self.sim.goto_arm_positions(init_joint_positions, wait=True)
 
         # Load controllers
         self._load_controller()

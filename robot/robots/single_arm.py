@@ -193,7 +193,9 @@ class SingleArm(Robot):
                 # self.sim.data.qpos[
                 #     self._ref_gripper_joint_pos_indexes
                 # ] = self.gripper.init_qpos
-                self.sim.open_gripper()
+                # self.sim.open_gripper()
+                init_gripper_positions = dict(zip(self.gripper_joints, self.gripper.init_qpos))
+                self.sim.goto_gripper_positions(init_gripper_positions)
 
         # TODO (chongyi zheng): do we need this?
         # Update base pos / ori references in controller
