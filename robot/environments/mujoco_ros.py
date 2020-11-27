@@ -128,7 +128,7 @@ class MujocoROS:
                 "traj_client": actionlib.SimpleActionClient(
                     controller_param["name"] + "/" + action_ns, control_msgs.msg.FollowJointTrajectoryAction)}
             if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(3)):
-                rospy.loginfo("{} is ready.".format(action_ns))
+                rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
             else:
                 raise MujocoROSError("Get trajectory controller service failed: {}".format(action_ns))
 
