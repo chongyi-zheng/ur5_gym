@@ -278,7 +278,8 @@ class MujocoEnv(metaclass=EnvMeta):
         self._pre_action(action, policy_step)
 
         # Note: this is done all at once to avoid floating point inaccuracies
-        self.cur_time += self.control_timestep
+        # self.cur_time += self.control_timestep
+        self.cur_time += self.model_timestep
 
         reward, done, info = self._post_action(action)
         return self._get_observation(), reward, done, info
