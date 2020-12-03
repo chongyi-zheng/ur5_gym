@@ -269,17 +269,28 @@ class MujocoROS:
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
             joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
-        index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
-        indices = [index_map[name] for name in joint_names]
-        joint_pos = []
-        for idx in indices:
-            if not ros:
+        # index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
+        # indices = [joint_states_msg.name.index(name) for name in joint_names]
+        # joint_pos = []
+        # for idx in indices:
+        #     if not ros:
+        #         if len(joint_states_msg.position[idx].data) == 1:
+        #             joint_pos.append(joint_states_msg.position[idx].data[0])
+        #         else:
+        #             joint_pos.append(list(joint_states_msg.position[idx].data))
+        #     else:
+        #         joint_pos.append(joint_states_msg.position[idx])
+
+        if ros:
+            joint_pos = [joint_states_msg.position[joint_states_msg.name.index(name)] for name in joint_names]
+        else:
+            joint_pos = []
+            for name in joint_names:
+                idx = joint_states_msg.name.index(name)
                 if len(joint_states_msg.position[idx].data) == 1:
                     joint_pos.append(joint_states_msg.position[idx].data[0])
                 else:
-                    joint_pos.append(list(joint_states_msg.position[idx].data))
-            else:
-                joint_pos.append(joint_states_msg.position[idx])
+                    joint_pos.append(joint_states_msg.position[idx].data)
 
         return joint_pos
 
@@ -298,17 +309,28 @@ class MujocoROS:
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
             joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
-        index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
-        indices = [index_map[name] for name in joint_names]
-        joint_vel = []
-        for idx in indices:
-            if not ros:
+        # index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
+        # indices = [index_map[name] for name in joint_names]
+        # joint_vel = []
+        # for idx in indices:
+        #     if not ros:
+        #         if len(joint_states_msg.velocity[idx].data) == 1:
+        #             joint_vel.append(joint_states_msg.velocity[idx].data[0])
+        #         else:
+        #             joint_vel.append(list(joint_states_msg.velocity[idx].data))
+        #     else:
+        #         joint_vel.append(joint_states_msg.velocity[idx])
+
+        if ros:
+            joint_vel = [joint_states_msg.velocity[joint_states_msg.name.index(name)] for name in joint_names]
+        else:
+            joint_vel = []
+            for name in joint_names:
+                idx = joint_states_msg.name.index(name)
                 if len(joint_states_msg.velocity[idx].data) == 1:
                     joint_vel.append(joint_states_msg.velocity[idx].data[0])
                 else:
-                    joint_vel.append(list(joint_states_msg.velocity[idx].data))
-            else:
-                joint_vel.append(joint_states_msg.velocity[idx])
+                    joint_vel.append(joint_states_msg.velocity[idx].data)
 
         return joint_vel
 
@@ -324,8 +346,9 @@ class MujocoROS:
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
             site_states_msg = rospy.wait_for_message(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, 5)
-            index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
-            idx = index_map[eef_site_name]
+            # index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
+            # idx = index_map[eef_site_name]
+            idx = site_states_msg.name.index(eef_site_name)
             eef_pos = list(site_states_msg.position[idx].data)
 
         return eef_pos
@@ -342,8 +365,9 @@ class MujocoROS:
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
             body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
-            index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
-            idx = index_map[eef_body_name]
+            # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+            # idx = index_map[eef_body_name]
+            idx = body_states_msg.name.index(eef_body_name)
             eef_pose_ori = body_states_msg.pose[idx].orientation
 
         if format == "xyzw":
@@ -358,9 +382,10 @@ class MujocoROS:
     def get_eef_vel(self):
         joint_values = self.get_joint_pos(self._arm_joint_names)
         jac_mat = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
-        index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
-        index = [index_map[name] for name in self._arm_joint_names]
-        jac_mat = jac_mat[:, index]  # switch columns
+        # index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
+        # index = [index_map[name] for name in self._arm_joint_names]
+        indices = [self._moveit_manipulator_group.get_active_joints().index(name) for name in self._arm_joint_names]
+        jac_mat = jac_mat[:, indices]  # switch columns
 
         joint_velocities = self.get_joint_vel(self._arm_joint_names)
         eef_vel = np.matmul(jac_mat, joint_velocities)
@@ -376,8 +401,9 @@ class MujocoROS:
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
         body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
-        index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
-        idx = index_map[object_name]
+        # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+        # idx = index_map[object_name]
+        idx = body_states_msg.name.index(object_name)
         object_pos = [body_states_msg.pose[idx].position.x, body_states_msg.pose[idx].position.y,
                       body_states_msg.pose[idx].position.z]
 
@@ -392,8 +418,9 @@ class MujocoROS:
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
         body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
-        index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
-        idx = index_map[object_name]
+        # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+        # idx = index_map[object_name]
+        idx = body_states_msg.name.index(object_name)
         object_ori = body_states_msg.pose[idx].orientation
 
         if format == "xyzw":
@@ -707,18 +734,29 @@ class MujocoROS:
         if self.is_position_valid(arm_joint_positions):
             for controller_key, controller_val in self._controllers.items():
                 if 'manipulator' in controller_key:
-                    index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
-                    indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                    # index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
+                    # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                    #
+                    # point = trajectory_msgs.msg.JointTrajectoryPoint()
+                    # point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
+                    # point.velocities = []
+                    # point.accelerations = []
+                    # point.time_from_start = rospy.Duration().from_sec(time_from_start)
+                    #
+                    # goal = control_msgs.msg.FollowJointTrajectoryGoal()
+                    # goal.trajectory.header.stamp = rospy.Time.now()
+                    # goal.trajectory.joint_names = controller_val["joints"]
+                    # goal.trajectory.points.append(point)
 
                     point = trajectory_msgs.msg.JointTrajectoryPoint()
-                    point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
+                    point.positions = list(arm_joint_positions.values())
                     point.velocities = []
                     point.accelerations = []
                     point.time_from_start = rospy.Duration().from_sec(time_from_start)
 
                     goal = control_msgs.msg.FollowJointTrajectoryGoal()
                     goal.trajectory.header.stamp = rospy.Time.now()
-                    goal.trajectory.joint_names = controller_val["joints"]
+                    goal.trajectory.joint_names = list(arm_joint_positions.keys())
                     goal.trajectory.points.append(point)
 
                     if wait:
@@ -745,18 +783,29 @@ class MujocoROS:
         # Publish trajectory message for each controller
         for controller_key, controller_val in self._controllers.items():
             if 'gripper' in controller_key:
-                index_maps = dict((name, idx) for idx, name in enumerate(gripper_joint_positions.keys()))
-                indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                # index_maps = dict((name, idx) for idx, name in enumerate(gripper_joint_positions.keys()))
+                # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                #
+                # point = trajectory_msgs.msg.JointTrajectoryPoint()
+                # point.positions = np.array(list(gripper_joint_positions.values()))[indices].tolist()
+                # point.velocities = []
+                # point.accelerations = []
+                # point.time_from_start = rospy.Duration().from_sec(time_from_start)
+                #
+                # traj = trajectory_msgs.msg.JointTrajectory()
+                # traj.header.stamp = rospy.Time.now()
+                # traj.joint_names = controller_val["joints"]
+                # traj.points.append(point)
 
                 point = trajectory_msgs.msg.JointTrajectoryPoint()
-                point.positions = np.array(list(gripper_joint_positions.values()))[indices].tolist()
+                point.positions = list(gripper_joint_positions.values())
                 point.velocities = []
                 point.accelerations = []
                 point.time_from_start = rospy.Duration().from_sec(time_from_start)
 
                 traj = trajectory_msgs.msg.JointTrajectory()
                 traj.header.stamp = rospy.Time.now()
-                traj.joint_names = controller_val["joints"]
+                traj.joint_names = list(gripper_joint_positions.keys())
                 traj.points.append(point)
 
                 controller_val["traj_pub"].publish(traj)
