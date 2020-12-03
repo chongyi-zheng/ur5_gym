@@ -261,14 +261,14 @@ class MujocoROS:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
+            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
         else:
             # try:
             #     joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
             #                                               mujoco_ros_msgs.msg.JointStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 3)
+            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
         index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
         indices = [index_map[name] for name in joint_names]
         joint_pos = []
@@ -290,14 +290,14 @@ class MujocoROS:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
+            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
         else:
             # try:
             #     joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
             #                                               mujoco_ros_msgs.msg.JointStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 3)
+            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
         index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
         indices = [index_map[name] for name in joint_names]
         joint_vel = []
@@ -323,7 +323,7 @@ class MujocoROS:
             #                                              mujoco_ros_msgs.msg.SiteStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            site_states_msg = rospy.wait_for_message(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, 3)
+            site_states_msg = rospy.wait_for_message(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, 5)
             index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
             idx = index_map[eef_site_name]
             eef_pos = list(site_states_msg.position[idx].data)
@@ -341,7 +341,7 @@ class MujocoROS:
             #                                              mujoco_ros_msgs.msg.BodyStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 3)
+            body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
             index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
             idx = index_map[eef_body_name]
             eef_pose_ori = body_states_msg.pose[idx].orientation
@@ -375,7 +375,7 @@ class MujocoROS:
         #                                              mujoco_ros_msgs.msg.BodyStates, 3)
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
-        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 3)
+        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
         index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
         idx = index_map[object_name]
         object_pos = [body_states_msg.pose[idx].position.x, body_states_msg.pose[idx].position.y,
@@ -391,7 +391,7 @@ class MujocoROS:
         #                                              mujoco_ros_msgs.msg.BodyStates, 3)
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
-        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 3)
+        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
         index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
         idx = index_map[object_name]
         object_ori = body_states_msg.pose[idx].orientation
