@@ -71,7 +71,7 @@ if __name__ == "__main__":
         use_camera_obs=False,
         gripper_visualizations=True,
         reward_shaping=True,
-        control_freq=50,  # 20, 50, 100
+        control_freq=20,  # 20, 50, 100
         hard_reset=False,
     )
 
@@ -97,6 +97,8 @@ if __name__ == "__main__":
         raise Exception(
             "Invalid device choice: choose either 'keyboard' or 'spacemouse'."
         )
+
+    import time
 
     while True:
         # Reset the environment
@@ -161,6 +163,9 @@ if __name__ == "__main__":
                 action = action[:env.action_dim]
 
             # Step through the simulation and render
+            start_time = time.time()
             obs, reward, done, info = env.step(action)
+            end_time = time.time()
+            print("Time to step environment: {}s".format(end_time - start_time))
             # TODO (chongyi zheng): Do we need this?
             # env.render()

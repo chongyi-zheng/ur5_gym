@@ -359,12 +359,12 @@ class RobotEnv(MujocoEnv):
 
         # TODO (chongyi zheng): Do we need this?
         # Also update indicator object if necessary
-        if self.use_indicator_object:
-            # Apply gravity compensation to indicator object too
-            self.sim.data.qfrc_applied[
-            self._ref_indicator_vel_low: self._ref_indicator_vel_high
-            ] = self.sim.data.qfrc_bias[
-                self._ref_indicator_vel_low: self._ref_indicator_vel_high]
+        # if self.use_indicator_object:
+        #     # Apply gravity compensation to indicator object too
+        #     self.sim.data.qfrc_applied[
+        #     self._ref_indicator_vel_low: self._ref_indicator_vel_high
+        #     ] = self.sim.data.qfrc_bias[
+        #         self._ref_indicator_vel_low: self._ref_indicator_vel_high]
 
     def _post_action(self, action):
         """
