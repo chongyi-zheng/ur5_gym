@@ -14,6 +14,8 @@ import trajectory_msgs.msg
 import jog_msgs.msg
 
 import numpy as np
+import copy
+from threading import Lock
 
 from robot.environments.ros_util import StateValidity
 
@@ -73,6 +75,21 @@ class MujocoROS:
         #     self._joint_names = self._moveit_manipulator_group.get_active_joints()
         self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
         self._state_validity = StateValidity(self.state_validity_srv)
+
+        # subscribers and messages
+        self._joint_states_msg_lock = Lock()
+        self._raw_joint_states_msg_lock = Lock()
+        self._site_states_msg_lock = Lock()
+        self._body_states_msg_lock = Lock()
+        self._joint_states_msg = None
+        self._raw_joint_states_msg = None
+        self._site_states_msg = None
+        self._body_states_msg = None
+        rospy.Subscriber(self.joint_state_topic, sensor_msgs.msg.JointState, self._joint_state_callback)
+        rospy.Subscriber(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates,
+                         self._raw_joint_state_callback)
+        rospy.Subscriber(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, self._site_state_callback)
+        rospy.Subscriber(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, self._body_state_callback)
 
     def _get_param(self, param_name, selections=None):
         try:
@@ -134,6 +151,22 @@ class MujocoROS:
                     controller_param["name"] + "/" + action_ns))
 
         return controllers
+
+    def _joint_state_callback(self, msg):
+        with self._joint_states_msg_lock:
+            self._joint_states_msg = msg
+
+    def _raw_joint_state_callback(self, msg):
+        with self._raw_joint_states_msg_lock:
+            self._raw_joint_states_msg = msg
+
+    def _site_state_callback(self, msg):
+        with self._site_states_msg_lock:
+            self._site_states_msg = msg
+
+    def _body_state_callback(self, msg):
+        with self._body_states_msg_lock:
+            self._body_states_msg = msg
 
     @property
     def timestep(self):
@@ -261,14 +294,19 @@ class MujocoROS:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            # joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            with self._joint_states_msg_lock:
+                joint_states_msg = copy.deepcopy(self._joint_states_msg)
         else:
             # try:
             #     joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
             #                                               mujoco_ros_msgs.msg.JointStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
+            # joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
+            #                                           mujoco_ros_msgs.msg.JointStates, 5)
+            with self._raw_joint_states_msg_lock:
+                joint_states_msg = copy.deepcopy(self._raw_joint_states_msg)
         # index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
         # indices = [joint_states_msg.name.index(name) for name in joint_names]
         # joint_pos = []
@@ -301,14 +339,19 @@ class MujocoROS:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            # joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            with self._joint_states_msg_lock:
+                joint_states_msg = copy.deepcopy(self._joint_states_msg)
         else:
             # try:
             #     joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
             #                                               mujoco_ros_msgs.msg.JointStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates, 5)
+            # joint_states_msg = rospy.wait_for_message(self.prefix + '/joint_states',
+            #                                           mujoco_ros_msgs.msg.JointStates, 5)
+            with self._raw_joint_states_msg_lock:
+                joint_states_msg = copy.deepcopy(self._raw_joint_states_msg)
         # index_map = dict((name, idx) for idx, name in enumerate(joint_states_msg.name))
         # indices = [index_map[name] for name in joint_names]
         # joint_vel = []
@@ -345,7 +388,9 @@ class MujocoROS:
             #                                              mujoco_ros_msgs.msg.SiteStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            site_states_msg = rospy.wait_for_message(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, 5)
+            # site_states_msg = rospy.wait_for_message(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, 5)
+            with self._site_states_msg_lock:
+                site_states_msg = copy.deepcopy(self._site_states_msg)
             # index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
             # idx = index_map[eef_site_name]
             idx = site_states_msg.name.index(eef_site_name)
@@ -364,7 +409,9 @@ class MujocoROS:
             #                                              mujoco_ros_msgs.msg.BodyStates, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+            # body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+            with self._body_states_msg_lock:
+                body_states_msg = copy.deepcopy(self._body_states_msg)
             # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
             # idx = index_map[eef_body_name]
             idx = body_states_msg.name.index(eef_body_name)
@@ -400,7 +447,9 @@ class MujocoROS:
         #                                              mujoco_ros_msgs.msg.BodyStates, 3)
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
-        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+        # body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+        with self._body_states_msg_lock:
+            body_states_msg = copy.deepcopy(self._body_states_msg)
         # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
         # idx = index_map[object_name]
         idx = body_states_msg.name.index(object_name)
@@ -417,7 +466,9 @@ class MujocoROS:
         #                                              mujoco_ros_msgs.msg.BodyStates, 3)
         # except rospy.ROSException as e:
         #     MujocoROSError("Message read failed: {}".format(e))
-        body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+        # body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+        with self._body_states_msg_lock:
+            body_states_msg = copy.deepcopy(self._body_states_msg)
         # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
         # idx = index_map[object_name]
         idx = body_states_msg.name.index(object_name)
