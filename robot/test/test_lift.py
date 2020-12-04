@@ -163,6 +163,9 @@ if __name__ == "__main__":
                 action = action[:env.action_dim]
 
             # Step through the simulation and render
+            start_time = time.time()
             obs, reward, done, info = env.step(action)
+            end_time = time.time()
+            print("Environment step time: {}s".format(end_time - start_time))
             # TODO (chongyi zheng): Do we need this?
             # env.render()
