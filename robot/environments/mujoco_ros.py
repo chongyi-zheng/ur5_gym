@@ -14,9 +14,10 @@ import geometry_msgs.msg
 import trajectory_msgs.msg
 import jog_msgs.msg
 
+import sys
 import numpy as np
-import copy
-from threading import Lock
+# import copy
+# from threading import Lock
 
 from robot.environments.ros_util import StateValidity
 
@@ -41,15 +42,26 @@ class MujocoROS:
 
         # ROS node
         rospy.init_node(self.node_name, anonymous=True)
-
-        # moveit
+        moveit_commander.roscpp_initialize(sys.argv)
+        
+        # terminate first, then spawn robot
+        self.terminate()
+        self.spawn()
+        
+        # # moveit
+        # self._moveit_robot = moveit_commander.RobotCommander()
+        # # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
+        # # self._moveit_gripper_group = moveit_commander.MoveGroupCommander(self.gripper_group_name)
+        # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        # self._moveit_manipulator_group.allow_replanning(True)
+        # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+        # self._moveit_gripper_group.allow_replanning(True)
         self._moveit_robot = moveit_commander.RobotCommander()
-        # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
-        # self._moveit_gripper_group = moveit_commander.MoveGroupCommander(self.gripper_group_name)
         self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
-        self._moveit_manipulator_group.allow_replanning(True)
-        self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
-        self._moveit_gripper_group.allow_replanning(True)
+        # self._moveit_manipulator_group.allow_replanning(True)
+        # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+        # self._moveit_gripper_group.allow_replanning(True)
+        self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
 
         # joint trajectory controllers
         self._controllers = self._get_controllers()
@@ -69,12 +81,11 @@ class MujocoROS:
         self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=1)
         self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
 
-        # misc
+        # state validity
         # try:
         #     self._joint_names = self._get_param("/robot_joints")
         # except MujocoROSError:
         #     self._joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
         self._state_validity = StateValidity(self.state_validity_srv)
 
         # subscribers and messages
@@ -145,11 +156,11 @@ class MujocoROS:
                     trajectory_msgs.msg.JointTrajectory, queue_size=10),
                 "traj_client": actionlib.SimpleActionClient(
                     controller_param["name"] + "/" + action_ns, control_msgs.msg.FollowJointTrajectoryAction)}
-            if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(5)):
-                rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
-            else:
-                raise MujocoROSError("Get trajectory controller service failed: {}".format(
-                    controller_param["name"] + "/" + action_ns))
+            # if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(20)):
+            #     rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
+            # else:
+            #     raise MujocoROSError("Get trajectory controller service failed: {}".format(
+            #         controller_param["name"] + "/" + action_ns))
 
         return controllers
 
@@ -275,6 +286,33 @@ class MujocoROS:
         else:
             return selected_indexes
 
+    def spawn(self):
+        request = TriggerRequest()
+        try:
+            spawn_sim_srv = rospy.ServiceProxy(self.prefix + "/spawn_sim_environment", Trigger)
+            spawn_sim_srv.wait_for_service(3)
+            spawn_sim_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    def terminate(self):
+        request = TriggerRequest()
+        try:
+            terminate_sim_srv = rospy.ServiceProxy(self.prefix + "/terminate_sim", Trigger)
+            terminate_sim_srv.wait_for_service(3)
+            terminate_sim_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+    # def init_moveit(self):
+    #     # moveit
+    #     self._moveit_robot = moveit_commander.RobotCommander()
+    #     # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+    #     # self._moveit_manipulator_group.allow_replanning(True)
+    #     # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+    #     # self._moveit_gripper_group.allow_replanning(True)
+    #     self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+
     def get_joint_limits(self, joint_names, joint_type='pos'):
         joint_limits = []
         for joint_name in joint_names:
@@ -314,6 +352,7 @@ class MujocoROS:
             request = GetJointStatesRequest()
             try:
                 get_joint_states_srv = rospy.ServiceProxy(self.prefix + "/get_joint_states", GetJointStates)
+                get_joint_states_srv.wait_for_service(3)
                 joint_states = get_joint_states_srv(request)
             except rospy.ServiceException as e:
                 raise MujocoROSError("Service call failed: {}".format(e))
@@ -366,6 +405,7 @@ class MujocoROS:
             request = GetJointStatesRequest()
             try:
                 get_joint_states_srv = rospy.ServiceProxy(self.prefix + "/get_joint_states", GetJointStates)
+                get_joint_states_srv.wait_for_service(3)
                 joint_states = get_joint_states_srv(request)
             except rospy.ServiceException as e:
                 raise MujocoROSError("Service call failed: {}".format(e))
@@ -411,6 +451,7 @@ class MujocoROS:
             request = GetSiteStatesRequest()
             try:
                 get_site_states_srv = rospy.ServiceProxy(self.prefix + "/get_site_states", GetSiteStates)
+                get_site_states_srv.wait_for_service(3)
                 site_states = get_site_states_srv(request)
             except rospy.ServiceException as e:
                 raise MujocoROSError("Service call failed: {}".format(e))
@@ -438,6 +479,7 @@ class MujocoROS:
             request = GetBodyStatesRequest()
             try:
                 get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+                get_body_states_srv.wait_for_service(3)
                 body_states = get_body_states_srv(request)
             except rospy.ServiceException as e:
                 raise MujocoROSError("Service call failed: {}".format(e))
@@ -482,6 +524,7 @@ class MujocoROS:
         request = GetBodyStatesRequest()
         try:
             get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+            get_body_states_srv.wait_for_service(3)
             body_states = get_body_states_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
@@ -507,6 +550,7 @@ class MujocoROS:
         request = GetBodyStatesRequest()
         try:
             get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+            get_body_states_srv.wait_for_service(3)
             body_states = get_body_states_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
@@ -526,9 +570,9 @@ class MujocoROS:
 
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
-        rospy.wait_for_service(self.prefix + '/set_fixed_camera', 3)
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_fixed_camera", SetFixedCamera)
+            set_joint_qpos_srv.wait_for_service(3)
             set_joint_qpos_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
@@ -544,36 +588,36 @@ class MujocoROS:
             multi_array = std_msgs.msg.Float64MultiArray()
             multi_array.data = [value] if isinstance(value, (float, np.float)) else value
             request.value.append(multi_array)
-        rospy.wait_for_service(self.prefix + '/set_joint_qpos', 3)
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_joint_qpos", SetJointQPos)
+            set_joint_qpos_srv.wait_for_service(3)
             set_joint_qpos_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
     def set_ctrl(self, names, ctrls):
         request = SetCtrlRequest(name=names, ctrl=ctrls)
-        rospy.wait_for_service(self.prefix + '/set_ctrl', 3)
         try:
             set_ctrl_srv = rospy.ServiceProxy(self.prefix + "/set_ctrl", SetCtrl)
+            set_ctrl_srv.wait_for_service(3)
             set_ctrl_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
     def set_vopt_geomgroup(self, index, value):
         request = SetOptGeomGroupRequest(index=index, value=value)
-        rospy.wait_for_service(self.prefix + '/set_vopt_geomgroup', 3)
         try:
             set_joint_qpos_srv = rospy.ServiceProxy(self.prefix + "/set_vopt_geomgroup", SetOptGeomGroup)
+            set_joint_qpos_srv.wait_for_service(3)
             set_joint_qpos_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
     def reset(self):
         request = TriggerRequest()
-        rospy.wait_for_service(self.prefix + '/reset', 3)
         try:
             reset_srv = rospy.ServiceProxy(self.prefix + "/reset", Trigger)
+            reset_srv.wait_for_service(3)
             reset_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
@@ -851,6 +895,12 @@ class MujocoROS:
                     goal.trajectory.joint_names = list(arm_joint_positions.keys())
                     goal.trajectory.points.append(point)
 
+                    if controller_val["traj_client"].wait_for_server(rospy.Duration(3)):
+                        rospy.loginfo("{} is ready.".format(controller_key + "/" + controller_val["action_ns"]))
+                    else:
+                        raise MujocoROSError("Get trajectory controller service failed: {}".format(
+                            controller_key + "/" + controller_val["action_ns"]))
+                    
                     if wait:
                         controller_val["traj_client"].send_goal_and_wait(goal)
                     else:

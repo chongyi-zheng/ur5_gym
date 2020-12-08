@@ -183,10 +183,11 @@ class SingleArm(Robot):
         Args:
             deterministic (bool): If true, will not randomize initializations within the sim
         """
-        # First, go to the default pose
-        up_joint_positions = dict(zip(self.robot_joints, self.robot_model.up_qpos))
-        self.sim.goto_arm_positions(up_joint_positions, wait=True)
-        self.sim.reset()
+        # TODO (chongyi zheng): we don't need this cause we spawn a new simulation every episode
+        # # First, go to the default pose
+        # up_joint_positions = dict(zip(self.robot_joints, self.robot_model.up_qpos))
+        # self.sim.goto_arm_positions(up_joint_positions, wait=True)
+        # self.sim.reset()
 
         # Then, run the superclass method to reset the position and controller
         super().reset(deterministic)
@@ -208,14 +209,14 @@ class SingleArm(Robot):
 
         # TODO (chongyi zheng): do we need this?
         # Setup buffers to hold recent values
-        self.recent_qpos = DeltaBuffer(dim=len(self.joint_indexes))
-        self.recent_actions = DeltaBuffer(dim=self.action_dim)
+        # self.recent_qpos = DeltaBuffer(dim=len(self.joint_indexes))
+        # self.recent_actions = DeltaBuffer(dim=self.action_dim)
         # self.recent_torques = DeltaBuffer(dim=len(self.joint_indexes))
         # self.recent_ee_forcetorques = DeltaBuffer(dim=6)
-        self.recent_ee_pose = DeltaBuffer(dim=7)
-        self.recent_ee_vel = DeltaBuffer(dim=6)
-        self.recent_ee_vel_buffer = RingBuffer(dim=6, length=10)
-        self.recent_ee_acc = DeltaBuffer(dim=6)
+        # self.recent_ee_pose = DeltaBuffer(dim=7)
+        # self.recent_ee_vel = DeltaBuffer(dim=6)
+        # self.recent_ee_vel_buffer = RingBuffer(dim=6, length=10)
+        # self.recent_ee_acc = DeltaBuffer(dim=6)
 
     def setup_references(self):
         """

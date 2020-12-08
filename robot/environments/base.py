@@ -186,9 +186,10 @@ class MujocoEnv(metaclass=EnvMeta):
             self._load_model()
             self._initialize_sim()
         # Else, we only reset the sim internally
-        # else:
-        #     # TODO (chongyi zheng): delete this
-        #     self.sim.reset()
+        else:
+            # TODO (chongyi zheng): delete this
+            self.sim.terminate()
+            self.sim.spawn()
         # Reset necessary robosuite-centric variables
         self._reset_internal()
         # TODO (ongyi zheng): delete this
@@ -200,33 +201,35 @@ class MujocoEnv(metaclass=EnvMeta):
 
         # TODO (chongyi zheng): delete viewer cause we cannot do this with real robot?
         # create visualization screen or renderer
-        # if self.has_renderer and self.viewer is None:
-        #     self.viewer = MujocoROSPyRenderer(self.sim)
-        #     # TODO (chongyi zheng): set through ros
-        #     # self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-        #     # self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
-        #     self.viewer.viewer.set_vopt_geomgroup(0, 1 if self.render_collision_mesh else 0)
-        #     self.viewer.viewer.set_vopt_geomgroup(1, 1 if self.render_visual_mesh else 0)
-        #
-        #     # hiding the overlay speeds up rendering significantly
-        #     self.viewer.viewer._hide_overlay = True
-        #
-        #     # make sure mujoco-py doesn't block rendering frames
-        #     # (see https://github.com/StanfordVL/robosuite/issues/39)
-        #     self.viewer.viewer._render_every_frame = True
-        #
-        #     # Set the camera angle for viewing
-        #     if self.render_camera is not None:
-        #         self.viewer.set_camera(camera_id=self.sim.camera_name2id(self.render_camera))
-        #
-        # elif self.has_offscreen_renderer:
-        #     # TODO (chongyi zheng): Do we need this?
-        #     pass
-        #     # if self.sim._render_context_offscreen is None:
-        #     #     render_context = MjRenderContextOffscreen(self.sim)
-        #     #     self.sim.add_render_context(render_context)
-        #     # self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-        #     # self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+        if self.has_renderer:
+            # self.viewer = MujocoROSPyRenderer(self.sim)
+            # TODO (chongyi zheng): set through ros
+            # self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+            # self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+            # self.viewer.viewer.set_vopt_geomgroup(0, 1 if self.render_collision_mesh else 0)
+            # self.viewer.viewer.set_vopt_geomgroup(1, 1 if self.render_visual_mesh else 0)
+            self.sim.set_vopt_geomgroup(0, 1 if self.render_collision_mesh else 0)
+            self.sim.set_vopt_geomgroup(1, 1 if self.render_visual_mesh else 0)
+
+            # hiding the overlay speeds up rendering significantly
+            # self.viewer.viewer._hide_overlay = True
+
+            # make sure mujoco-py doesn't block rendering frames
+            # (see https://github.com/StanfordVL/robosuite/issues/39)
+            # self.viewer.viewer._render_every_frame = True
+
+            # Set the camera angle for viewing
+            if self.render_camera is not None:
+                self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
+
+        elif self.has_offscreen_renderer:
+            # TODO (chongyi zheng): Do we need this?
+            pass
+            # if self.sim._render_context_offscreen is None:
+            #     render_context = MjRenderContextOffscreen(self.sim)
+            #     self.sim.add_render_context(render_context)
+            # self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
+            # self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
 
         # additional housekeeping
         # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless
