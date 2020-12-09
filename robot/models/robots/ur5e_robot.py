@@ -30,7 +30,7 @@ class UR5e(RobotModel):
         return "default_ur5e"
 
     @property
-    def up_qpos(self):
+    def reset_qpos(self):
         return np.array([0.0, -1.571, 0.0, 0.0, 0.0, 0.0])
 
     @property

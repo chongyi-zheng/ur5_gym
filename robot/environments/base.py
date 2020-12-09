@@ -188,8 +188,9 @@ class MujocoEnv(metaclass=EnvMeta):
         # Else, we only reset the sim internally
         else:
             # TODO (chongyi zheng): delete this
-            self.sim.terminate()
-            self.sim.spawn()
+            # self.sim.terminate()
+            # self.sim.spawn()
+            self.sim.reset_moveit()
         # Reset necessary robosuite-centric variables
         self._reset_internal()
         # TODO (ongyi zheng): delete this

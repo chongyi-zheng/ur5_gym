@@ -41,11 +41,10 @@ class MujocoROS:
 
         # ROS node
         rospy.init_node(self.node_name, anonymous=True)
-        moveit_commander.roscpp_initialize(sys.argv)
-        
+
         # terminate first, then spawn robot
-        self.terminate()
-        self.spawn()
+        # self.terminate()
+        # self.spawn()
         
         # # moveit
         # self._moveit_robot = moveit_commander.RobotCommander()
@@ -55,12 +54,14 @@ class MujocoROS:
         # self._moveit_manipulator_group.allow_replanning(True)
         # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
         # self._moveit_gripper_group.allow_replanning(True)
-        self._moveit_robot = moveit_commander.RobotCommander()
-        self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
-        # self._moveit_manipulator_group.allow_replanning(True)
-        # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
-        # self._moveit_gripper_group.allow_replanning(True)
-        self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+        # moveit_commander.roscpp_initialize(sys.argv)
+        # self._moveit_robot = moveit_commander.RobotCommander()
+        # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+        self._moveit_robot = None
+        self._moveit_manipulator_group = None
+        self._arm_joint_names = None
+        self.reset_moveit()
 
         # joint trajectory controllers
         self._controllers = self._get_controllers()
@@ -155,11 +156,11 @@ class MujocoROS:
                     trajectory_msgs.msg.JointTrajectory, queue_size=10),
                 "traj_client": actionlib.SimpleActionClient(
                     controller_param["name"] + "/" + action_ns, control_msgs.msg.FollowJointTrajectoryAction)}
-            # if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(20)):
-            #     rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
-            # else:
-            #     raise MujocoROSError("Get trajectory controller service failed: {}".format(
-            #         controller_param["name"] + "/" + action_ns))
+            if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(15)):
+                rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
+            else:
+                raise MujocoROSError("Get trajectory controller service failed: {}".format(
+                    controller_param["name"] + "/" + action_ns))
 
         return controllers
 
@@ -303,14 +304,19 @@ class MujocoROS:
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
-    # def init_moveit(self):
-    #     # moveit
-    #     self._moveit_robot = moveit_commander.RobotCommander()
-    #     # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
-    #     # self._moveit_manipulator_group.allow_replanning(True)
-    #     # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
-    #     # self._moveit_gripper_group.allow_replanning(True)
-    #     self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+    def reset_moveit(self):
+        # # moveit
+        # self._moveit_robot = moveit_commander.RobotCommander()
+        # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        # # self._moveit_manipulator_group.allow_replanning(True)
+        # # self._moveit_gripper_group = self._moveit_robot.get_group(self.gripper_group_name)
+        # # self._moveit_gripper_group.allow_replanning(True)
+        # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+
+        moveit_commander.roscpp_initialize(sys.argv)
+        self._moveit_robot = moveit_commander.RobotCommander()
+        self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
+        self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
 
     def get_joint_limits(self, joint_names, joint_type='pos'):
         joint_limits = []
@@ -894,13 +900,12 @@ class MujocoROS:
                 goal.trajectory.joint_names = list(arm_joint_positions.keys())
                 goal.trajectory.points.append(point)
 
-                if not controller_val["traj_client"].wait_for_server(rospy.Duration(3)):
-                    raise MujocoROSError("Get trajectory controller service failed: {}".format(
-                        controller_key + "/" + controller_val["action_ns"]))
-
                 if wait:
-                    controller_val["traj_client"].send_goal_and_wait(goal, execute_timeout=rospy.Duration(5),
-                                                                     preempt_timeout=rospy.Duration(5))
+                    try:
+                        controller_val["traj_client"].send_goal_and_wait(goal, execute_timeout=rospy.Duration(5),
+                                                                         preempt_timeout=rospy.Duration(5))
+                    except:
+                        raise MujocoROSError("Calling trajectory client failed!")
                 else:
                     controller_val["traj_client"].send_goal(goal)
         # else:

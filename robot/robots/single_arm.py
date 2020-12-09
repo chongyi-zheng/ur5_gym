@@ -184,10 +184,10 @@ class SingleArm(Robot):
             deterministic (bool): If true, will not randomize initializations within the sim
         """
         # TODO (chongyi zheng): we don't need this cause we spawn a new simulation every episode
-        # # First, go to the default pose
-        # up_joint_positions = dict(zip(self.robot_joints, self.robot_model.up_qpos))
-        # self.sim.goto_arm_positions(up_joint_positions, wait=True)
-        # self.sim.reset()
+        # # First, go to the reset pose
+        reset_joint_positions = dict(zip(self.robot_joints, self.robot_model.reset_qpos))
+        self.sim.goto_arm_positions(reset_joint_positions, wait=True)
+        self.sim.reset()
 
         # Then, run the superclass method to reset the position and controller
         super().reset(deterministic)
