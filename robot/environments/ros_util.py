@@ -241,6 +241,7 @@ class StateValidity:
         self.srv_name = srv_name
 
         self._srv = rospy.ServiceProxy(self.srv_name, moveit_msgs.srv.GetStateValidity)
+        self._srv.wait_for_service(3)
 
     def terminate(self):
         """Terminate the service proxy.
@@ -279,6 +280,5 @@ class StateValidity:
         sv_request.group_name = group_name
         if constraints:
             sv_request.constraints = constraints
-        self._srv.wait_for_service(3)
         result = self._srv.call(sv_request)
         return result

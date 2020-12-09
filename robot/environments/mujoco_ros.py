@@ -1,5 +1,4 @@
 import rospy
-import mujoco_ros_msgs.msg
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, GetBodyStates, GetBodyStatesRequest, \
     GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest
@@ -333,7 +332,7 @@ class MujocoROS:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            joint_states = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # with self._joint_states_msg_lock:
             #     joint_states_msg = copy.deepcopy(self._joint_states_msg)
             # request = GetJointStatesRequest()
@@ -867,46 +866,45 @@ class MujocoROS:
         # self._act_quat = ref_quat
 
     def goto_arm_positions(self, arm_joint_positions, time_from_start=4.0, wait=False):
-        if self.is_position_valid(arm_joint_positions):
-            for controller_key, controller_val in self._controllers.items():
-                if 'manipulator' in controller_key:
-                    # index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
-                    # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
-                    #
-                    # point = trajectory_msgs.msg.JointTrajectoryPoint()
-                    # point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
-                    # point.velocities = []
-                    # point.accelerations = []
-                    # point.time_from_start = rospy.Duration().from_sec(time_from_start)
-                    #
-                    # goal = control_msgs.msg.FollowJointTrajectoryGoal()
-                    # goal.trajectory.header.stamp = rospy.Time.now()
-                    # goal.trajectory.joint_names = controller_val["joints"]
-                    # goal.trajectory.points.append(point)
+        # if self.is_position_valid(arm_joint_positions):
+        for controller_key, controller_val in self._controllers.items():
+            if 'manipulator' in controller_key:
+                # index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
+                # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                #
+                # point = trajectory_msgs.msg.JointTrajectoryPoint()
+                # point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
+                # point.velocities = []
+                # point.accelerations = []
+                # point.time_from_start = rospy.Duration().from_sec(time_from_start)
+                #
+                # goal = control_msgs.msg.FollowJointTrajectoryGoal()
+                # goal.trajectory.header.stamp = rospy.Time.now()
+                # goal.trajectory.joint_names = controller_val["joints"]
+                # goal.trajectory.points.append(point)
 
-                    point = trajectory_msgs.msg.JointTrajectoryPoint()
-                    point.positions = list(arm_joint_positions.values())
-                    point.velocities = []
-                    point.accelerations = []
-                    point.time_from_start = rospy.Duration().from_sec(time_from_start)
+                point = trajectory_msgs.msg.JointTrajectoryPoint()
+                point.positions = list(arm_joint_positions.values())
+                point.velocities = []
+                point.accelerations = []
+                point.time_from_start = rospy.Duration().from_sec(time_from_start)
 
-                    goal = control_msgs.msg.FollowJointTrajectoryGoal()
-                    goal.trajectory.header.stamp = rospy.Time.now()
-                    goal.trajectory.joint_names = list(arm_joint_positions.keys())
-                    goal.trajectory.points.append(point)
+                goal = control_msgs.msg.FollowJointTrajectoryGoal()
+                goal.trajectory.header.stamp = rospy.Time.now()
+                goal.trajectory.joint_names = list(arm_joint_positions.keys())
+                goal.trajectory.points.append(point)
 
-                    if controller_val["traj_client"].wait_for_server(rospy.Duration(3)):
-                        rospy.loginfo("{} is ready.".format(controller_key + "/" + controller_val["action_ns"]))
-                    else:
-                        raise MujocoROSError("Get trajectory controller service failed: {}".format(
-                            controller_key + "/" + controller_val["action_ns"]))
-                    
-                    if wait:
-                        controller_val["traj_client"].send_goal_and_wait(goal)
-                    else:
-                        controller_val["traj_client"].send_goal(goal)
-        else:
-            raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+                if not controller_val["traj_client"].wait_for_server(rospy.Duration(3)):
+                    raise MujocoROSError("Get trajectory controller service failed: {}".format(
+                        controller_key + "/" + controller_val["action_ns"]))
+
+                if wait:
+                    controller_val["traj_client"].send_goal_and_wait(goal, execute_timeout=rospy.Duration(5),
+                                                                     preempt_timeout=rospy.Duration(5))
+                else:
+                    controller_val["traj_client"].send_goal(goal)
+        # else:
+        #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
 
     def goto_gripper_positions(self, gripper_joint_positions, time_from_start=1.0):
         # jog_joint_msg = jog_msgs.msg.JogJoint()
