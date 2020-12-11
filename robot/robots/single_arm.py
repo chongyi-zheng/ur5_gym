@@ -407,11 +407,11 @@ class SingleArm(Robot):
         #     self.sim.data.get_body_xquat(self.robot_model.eef_name), to="xyzw"
         # )
         # self.eef_site_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_site"])
-        di[pf + "eef_pos"] = np.array(self.sim.get_eef_pos())
+        di[pf + "eef_pos"] = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
         # tmp = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
         # assert np.allclose(di[pf + "eef_pos"], tmp, atol=1e-5)
 
-        di[pf + "eef_quat"] = np.array(self.sim.get_eef_quat())
+        di[pf + "eef_quat"] = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
         # tmp = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
         # -q and q represent the same rotation
         # assert np.allclose(di[pf + "eef_quat"], tmp, atol=1e-5) or np.allclose(di[pf + "eef_quat"], -tmp, atol=1e-5)

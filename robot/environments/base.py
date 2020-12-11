@@ -190,7 +190,9 @@ class MujocoEnv(metaclass=EnvMeta):
             # TODO (chongyi zheng): delete this
             # self.sim.terminate()
             # self.sim.spawn()
-            self.sim.reset_moveit()
+            # self.sim.reset_moveit()
+            # self.sim.reset_controllers()
+            pass
         # Reset necessary robosuite-centric variables
         self._reset_internal()
         # TODO (ongyi zheng): delete this
