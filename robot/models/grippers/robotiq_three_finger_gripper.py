@@ -30,27 +30,39 @@ class RobotiqThreeFingerGripperBase(GripperModel):
 
     @property
     def _joints(self):
+        # return [
+        #     "palm_finger_1_joint",
+        #     "finger_1_joint_1",
+        #     "finger_1_joint_2",
+        #     "finger_1_joint_3",
+        #     "palm_finger_2_joint",
+        #     "finger_2_joint_1",
+        #     "finger_2_joint_2",
+        #     "finger_2_joint_3",
+        #     "finger_middle_joint_1",
+        #     "finger_middle_joint_2",
+        #     "finger_middle_joint_3"
+        # ]
         return [
-            "palm_finger_1_joint",
             "finger_1_joint_1",
-            "finger_1_joint_2",
-            "finger_1_joint_3",
-            "palm_finger_2_joint",
             "finger_2_joint_1",
-            "finger_2_joint_2",
-            "finger_2_joint_3",
             "finger_middle_joint_1",
-            "finger_middle_joint_2",
-            "finger_middle_joint_3"
+            "palm_finger_1_joint",
         ]
 
     @property
     def _actuators(self):
+        # return [
+        #     "finger_1",
+        #     "finger_2",
+        #     "middle_finger",
+        #     "finger_scissor"
+        # ]
         return [
-            "finger_1",
-            "finger_2",
-            "middle_finger",
-            "finger_scissor"
+            "finger_1_joint_1_pos",
+            "finger_2_joint_1_pos",
+            "finger_middle_joint_1_pos",
+            "palm_finger_1_joint_pos",
         ]
 
     @property
@@ -106,7 +118,8 @@ class RobotiqThreeFingerGripper(RobotiqThreeFingerGripperBase):
 
     @property
     def speed(self):
-        return 0.01
+        # return 0.01
+        return 2.0
 
     @property
     def dof(self):

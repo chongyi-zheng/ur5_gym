@@ -188,11 +188,15 @@ class MujocoEnv(metaclass=EnvMeta):
         # Else, we only reset the sim internally
         else:
             # TODO (chongyi zheng): delete this
-            # self.sim.terminate()
-            # self.sim.spawn()
-            # self.sim.reset_moveit()
-            # self.sim.reset_controllers()
-            pass
+            # reset_success = False
+            # while not reset_success:
+            #     self.sim.terminate()
+            #     self.sim.spawn()
+            #     reset_success = self.sim.reset_moveit()
+            #     # reset_success = self.sim.reset_controllers()
+            self.sim.terminate()
+            self.sim.spawn()
+            self.sim.reset_moveit()
         # Reset necessary robosuite-centric variables
         self._reset_internal()
         # TODO (ongyi zheng): delete this
@@ -233,6 +237,10 @@ class MujocoEnv(metaclass=EnvMeta):
             #     self.sim.add_render_context(render_context)
             # self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
             # self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+
+        # Set the camera angle for viewing
+        if self.render_camera is not None:
+            self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
 
         # additional housekeeping
         # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless

@@ -184,10 +184,10 @@ class SingleArm(Robot):
             deterministic (bool): If true, will not randomize initializations within the sim
         """
         # TODO (chongyi zheng): we don't need this cause we spawn a new simulation every episode
-        # # First, go to the reset pose
-        reset_joint_positions = dict(zip(self.robot_joints, self.robot_model.reset_qpos))
-        self.sim.goto_arm_positions(reset_joint_positions, wait=True)
-        self.sim.reset()
+        # First, go to the reset pose
+        # reset_joint_positions = dict(zip(self.robot_joints, self.robot_model.reset_qpos))
+        # self.sim.goto_arm_positions(reset_joint_positions, wait=True)
+        # self.sim.reset()
 
         # Then, run the superclass method to reset the position and controller
         super().reset(deterministic)
@@ -341,7 +341,8 @@ class SingleArm(Robot):
         # TODO (chongyi zheng): control with ROS
         # rescale normalized gripper action to control ranges
         # ctrl_range = self.sim.actuator_ctrlrange[self._ref_joint_gripper_actuator_indexes]
-        ctrl_range = np.array(self.sim.get_joint_limits(self.gripper_joints, 'pos'))
+        ctrl_range = np.array(self.sim.get_joint_limits(
+            joint_names=self.gripper_joints, actuator_names=self.gripper.actuators, joint_type='pos'))
         bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
         weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
         applied_gripper_joint = bias + weight * gripper_action_actual
@@ -473,7 +474,7 @@ class SingleArm(Robot):
         # Position limit values pulled from relevant robot.xml file
         # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
         # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
-        limits = self.sim.get_joint_limits(self.robot_joints, 'pos')
+        limits = self.sim.get_joint_limits(joint_names=self.robot_joints, joint_type='pos')
         low = np.array(limits[:, 0])
         high = np.array(limits[:, 1])
 

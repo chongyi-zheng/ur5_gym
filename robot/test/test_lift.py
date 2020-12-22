@@ -13,6 +13,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", type=str, default="Lift")
     parser.add_argument("--robots", nargs="+", type=str, default="Panda", help="Which robot(s) to use in the env")
+    parser.add_argument("--grippers", nargs="+", type=str, default="PandaGripper",
+                        help="Which gripper(s) to use in the env")
     parser.add_argument("--config", type=str, default="single-arm-opposed",
                         help="Specified environment configuration if necessary")
     parser.add_argument("--arm", type=str, default="right", help="Which arm to control (eg bimanual) 'right' or 'left'")
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     config = {
         "env_name": args.environment,
         "robots": args.robots,
+        "gripper_types": args.grippers,
         "controller_configs": controller_config,
     }
 
@@ -166,6 +169,6 @@ if __name__ == "__main__":
             start_time = time.time()
             obs, reward, done, info = env.step(action)
             end_time = time.time()
-            print("Environment step time: {}s".format(end_time - start_time))
+            # print("Environment step time: {}s".format(end_time - start_time))
             # TODO (chongyi zheng): Do we need this?
             # env.render()

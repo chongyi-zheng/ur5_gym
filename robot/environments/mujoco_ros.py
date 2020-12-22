@@ -3,6 +3,7 @@ from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGro
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, GetBodyStates, GetBodyStatesRequest, \
     GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest
 from std_srvs.srv import Trigger, TriggerRequest
+from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
 import moveit_commander
 import actionlib
 import moveit_msgs.msg
@@ -43,9 +44,9 @@ class MujocoROS:
         rospy.init_node(self.node_name, anonymous=True)
 
         # terminate first, then spawn robot
-        # self.terminate()
-        # self.spawn()
-        
+        self.terminate()
+        self.spawn()
+
         # # moveit
         # self._moveit_robot = moveit_commander.RobotCommander()
         # # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name)
@@ -61,7 +62,7 @@ class MujocoROS:
         self._moveit_robot = None
         self._moveit_manipulator_group = None
         self._arm_joint_names = None
-        # self.reset_moveit()
+        self.reset_moveit()
 
         # joint trajectory controllers
         self._controllers = self._get_controllers()
@@ -157,11 +158,12 @@ class MujocoROS:
                     trajectory_msgs.msg.JointTrajectory, queue_size=10),
                 "traj_client": actionlib.SimpleActionClient(
                     controller_param["name"] + "/" + action_ns, control_msgs.msg.FollowJointTrajectoryAction)}
-            if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(15)):
-                rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
-            else:
-                raise MujocoROSError("Get trajectory controller service failed: {}".format(
-                    controller_param["name"] + "/" + action_ns))
+            # if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(15)):
+            #     rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
+            #     # print("{} is ready.".format(controller_param["name"] + "/" + action_ns))
+            # else:
+            #     raise MujocoROSError("Get trajectory controller service failed: {}".format(
+            #         controller_param["name"] + "/" + action_ns))
 
         return controllers
 
@@ -316,24 +318,32 @@ class MujocoROS:
         # TODO (chongyi zheng): Do we need this?
         moveit_commander.roscpp_initialize(sys.argv)
         self._moveit_robot = moveit_commander.RobotCommander()
-        self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
-                                                                             wait_for_servers=10.0)
+        try:
+            self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
+                                                                                 wait_for_servers=20.0)
+        except:
+            return False
 
         self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
 
+        return True
+
     def reset_controllers(self):
         for controller_name, controller in self._controllers.items():
-            if controller["traj_client"].wait_for_server(rospy.Duration(15)):
+            try:
+                controller["traj_client"].wait_for_server(rospy.Duration(15))
                 rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
-            else:
-                raise MujocoROSError("Get trajectory controller service failed: {}".format(
-                    controller_name + "/" + controller["action_ns"]))
+            except:
+                return False
 
-    def get_joint_limits(self, joint_names, joint_type='pos'):
+        return True
+
+    def get_joint_limits(self, joint_names, actuator_names=None, joint_type='pos'):
         if joint_type != 'pos':
             raise MujocoROSError("Joint type \"{}\" is unknown!".format(joint_type))
 
-        actuator_names = [joint_name.replace('joint', joint_type) for joint_name in joint_names]
+        if actuator_names is None:
+            actuator_names = [joint_name.replace('joint', joint_type) for joint_name in joint_names]
         param_name = self.prefix + '/actuator_ctrlrange'
         selected_actuator_ctrlranges = np.array(self._get_param(param_name, selections=actuator_names))
 
@@ -649,6 +659,17 @@ class MujocoROS:
             raise MujocoROSError("Service call failed: {}".format(e))
 
     def reset(self):
+        # switch_controller_req = SwitchControllerRequest()
+        # switch_controller_req.stop_controllers = ['joint_state_controller']
+        # switch_controller_req.start_controllers = []
+        # switch_controller_req.strictness = switch_controller_req.STRICT
+        # switch_controller_srv = rospy.ServiceProxy("/controller_manager/switch_controller", SwitchController)
+        # switch_controller_srv.wait_for_service(3)
+        # try:
+        #     switch_controller_srv(switch_controller_req)
+        # except rospy.ServiceException as e:
+        #     raise MujocoROSError("Service call failed: {}".format(e))
+
         request = TriggerRequest()
         try:
             reset_srv = rospy.ServiceProxy(self.prefix + "/reset", Trigger)
@@ -656,6 +677,13 @@ class MujocoROS:
             reset_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
+
+        # switch_controller_req.stop_controllers = []
+        # switch_controller_req.start_controllers = ['joint_state_controller']
+        # try:
+        #     switch_controller_srv(switch_controller_req)
+        # except rospy.ServiceException as e:
+        #     raise MujocoROSError("Service call failed: {}".format(e))
 
     def is_position_valid(self, joint_positions):
         assert isinstance(joint_positions, dict) or isinstance(joint_positions, list) or \
@@ -926,7 +954,7 @@ class MujocoROS:
     #             point.time_from_start = rospy.Duration().from_sec(time_from_start)
     #
     #             goal = control_msgs.msg.FollowJointTrajectoryGoal()
-    #             goal.trajectory.header.stamp = rospy.Time.now()
+    #             # goal.trajectory.header.stamp = rospy.Time.now()
     #             goal.trajectory.joint_names = list(arm_joint_positions.keys())
     #             goal.trajectory.points.append(point)
     #
