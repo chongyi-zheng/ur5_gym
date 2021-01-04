@@ -311,7 +311,10 @@ class SingleArm(Robot):
         # Apply pose control
         # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
-        self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
+        if self.controller.use_ori:
+            self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
+        else:
+            self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:

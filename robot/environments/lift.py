@@ -366,10 +366,17 @@ class Lift(RobotEnv):
             obj_pos, obj_quat = self.model.place_objects()
 
             # Loop through all objects and reset their positions
-            for i, (obj_name, _) in enumerate(self.mujoco_objects.items()):
-                # TODO (chongyi zheng): set_joint_qpos with ROS service
-                # self.sim.data.set_joint_qpos(obj_name + "_jnt0", np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
-                self.sim.set_joint_qpos(obj_name + "_jnt0", np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
+            controller_type = self.robot_configs[0]['controller_config']['type']
+            if controller_type == 'OSC_POSE':
+                for i, (obj_name, _) in enumerate(self.mujoco_objects.items()):
+                    # TODO (chongyi zheng): set_joint_qpos with ROS service
+                    # self.sim.data.set_joint_qpos(obj_name + "_jnt0", np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
+                    self.sim.set_joint_qpos(obj_name + "_jnt0",
+                                            np.concatenate([np.array(obj_pos[i]), np.array(obj_quat[i])]))
+            elif controller_type == 'OSC_POSITION':
+                for i, (obj_name, _) in enumerate(self.mujoco_objects.items()):
+                    self.sim.set_joint_qpos(obj_name + "_jnt0",
+                                            np.concatenate([np.array(obj_pos[i]), np.array([1.0, 0.0, 0.0, 0.0])]))
 
         super()._reset_internal()
 

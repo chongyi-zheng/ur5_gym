@@ -322,19 +322,28 @@ class MujocoROS:
             self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
                                                                                  wait_for_servers=20.0)
         except:
-            return False
+            self.terminate()
+            self.spawn()
+            moveit_commander.roscpp_initialize(sys.argv)
+            self._moveit_robot = moveit_commander.RobotCommander()
+            self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
+                                                                                 wait_for_servers=20.0)
 
         self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
 
         return True
 
     def reset_controllers(self):
-        for controller_name, controller in self._controllers.items():
-            try:
-                controller["traj_client"].wait_for_server(rospy.Duration(15))
+        try:
+            for controller_name, controller in self._controllers.items():
+                controller["traj_client"].wait_for_server(rospy.Duration(10))
                 rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
-            except:
-                return False
+        except:
+            self.terminate()
+            self.spawn()
+            for controller_name, controller in self._controllers.items():
+                controller["traj_client"].wait_for_server(rospy.Duration(10))
+                rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
 
         return True
 
@@ -700,14 +709,15 @@ class MujocoROS:
         return is_valid
 
     def goto_arm_positions(self, arm_joint_positions, wait=True):
-        if self.is_position_valid(arm_joint_positions):
-            # go to target joint positions
-            self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
-
-            # calling `stop()` ensures that there is no residual movement
-            # self._moveit_manipulator_group.stop()
-        else:
-            raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+        # if self.is_position_valid(arm_joint_positions):
+        #     # go to target joint positions
+        #     self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
+        #
+        #     # calling `stop()` ensures that there is no residual movement
+        #     # self._moveit_manipulator_group.stop()
+        # else:
+        #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+        self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
 
     def goto_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw", wait=True):
         assert np.shape(eef_pos) == (3,) and np.shape(eef_quat) == (4,), "Invalid end effector pose!"
@@ -954,14 +964,15 @@ class MujocoROS:
     #             point.time_from_start = rospy.Duration().from_sec(time_from_start)
     #
     #             goal = control_msgs.msg.FollowJointTrajectoryGoal()
-    #             # goal.trajectory.header.stamp = rospy.Time.now()
+    #             goal.trajectory.header.stamp = rospy.Time.now()
     #             goal.trajectory.joint_names = list(arm_joint_positions.keys())
     #             goal.trajectory.points.append(point)
     #
     #             if wait:
     #                 try:
-    #                     controller_val["traj_client"].send_goal_and_wait(goal, execute_timeout=rospy.Duration(5),
-    #                                                                      preempt_timeout=rospy.Duration(5))
+    #                     controller_val["traj_client"].send_goal_and_wait(
+    #                         goal, execute_timeout=rospy.Duration(time_from_start),
+    #                         preempt_timeout=rospy.Duration(time_from_start))
     #                 except:
     #                     raise MujocoROSError("Calling trajectory client failed!")
     #             else:

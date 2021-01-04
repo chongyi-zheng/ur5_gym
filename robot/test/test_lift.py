@@ -20,7 +20,8 @@ if __name__ == "__main__":
     parser.add_argument("--arm", type=str, default="right", help="Which arm to control (eg bimanual) 'right' or 'left'")
     parser.add_argument("--switch-on-click", action="store_true", help="Switch gripper control on gripper click")
     parser.add_argument("--toggle-camera-on-click", action="store_true", help="Switch camera angle on gripper click")
-    parser.add_argument("--controller", type=str, default="osc", help="Choice of controller. Can be 'ik' or 'osc'")
+    parser.add_argument("--controller", type=str, default="osc_pose",
+                        help="Choice of controller. Can be 'ik' or 'osc_pose' or 'osc_position'")
     parser.add_argument("--device", type=str, default="keyboard")
     parser.add_argument("--pos-sensitivity", type=float, default=0.125, help="How much to scale position user inputs")
     parser.add_argument("--rot-sensitivity", type=float, default=1.0, help="How much to scale rotation user inputs")
@@ -29,10 +30,12 @@ if __name__ == "__main__":
     # Import controller config for EE IK or OSC (pos/ori)
     if args.controller == 'ik':
         controller_name = 'IK_POSE'
-    elif args.controller == 'osc':
+    elif args.controller == 'osc_pose':
         controller_name = 'OSC_POSE'
+    elif args.controller == 'osc_position':
+        controller_name = 'OSC_POSITION'
     else:
-        print("Error: Unsupported controller specified. Must be either 'ik' or 'osc'!")
+        print("Error: Unsupported controller specified. Must be either 'ik' or 'osc_pose' or 'osc_position'!")
         raise ValueError
 
     # Get controller config

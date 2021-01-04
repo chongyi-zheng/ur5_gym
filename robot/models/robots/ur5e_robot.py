@@ -36,6 +36,8 @@ class UR5e(RobotModel):
     @property
     def init_qpos(self):
         return np.array([-0.470, -1.735, 2.480, -2.275, -1.590, -0.420])
+        # return np.array([-0.470, -1.735, 2.480, -2.275, -1.590, 1.151])
+        # return np.array([-0.470, -1.735, 2.480, -2.275, -1.590, -1.991])
 
     @property
     def base_xpos_offset(self):
