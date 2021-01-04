@@ -231,8 +231,7 @@ class Lift(RobotEnv):
 
         # sparse completion reward
         if self._check_success():
-            # reward = 2.25
-            reward = 2.0
+            reward = 2.25
 
         # TODO (chongyi zheng): modify this to be compatible with ROS
         # use a shaping reward
@@ -249,8 +248,9 @@ class Lift(RobotEnv):
 
             # TODO (chongyi zheng): Do we need this?
             # grasping reward
-            # touch_left_finger = False
-            # touch_right_finger = False
+            touch_left_finger = False
+            touch_right_finger = False
+            contact_geom1, contact_geom2 = self.sim.get_contacts()
             # for i in range(self.sim.data.ncon):
             #     c = self.sim.data.contact[i]
             #     if c.geom1 in self.l_finger_geom_ids and c.geom2 == self.cube_geom_id:
@@ -261,13 +261,21 @@ class Lift(RobotEnv):
             #         touch_right_finger = True
             #     if c.geom1 == self.cube_geom_id and c.geom2 in self.r_finger_geom_ids:
             #         touch_right_finger = True
-            # if touch_left_finger and touch_right_finger:
-            #     reward += 0.25
+            for geom1, geom2 in zip(contact_geom1, contact_geom2):
+                if geom1 in self.l_finger_geom_ids and geom2 == self.cube_geom_id:
+                    touch_left_finger = True
+                if geom1 == self.cube_geom_id and geom2 in self.l_finger_geom_ids:
+                    touch_left_finger = True
+                if geom1 in self.r_finger_geom_ids and geom2 == self.cube_geom_id:
+                    touch_right_finger = True
+                if geom1 == self.cube_geom_id and geom2 in self.r_finger_geom_ids:
+                    touch_right_finger = True
+            if touch_left_finger and touch_right_finger:
+                reward += 0.25
 
         # Scale reward if requested
         if self.reward_scale is not None:
-            # reward *= self.reward_scale / 2.25
-            reward *= self.reward_scale / 2.0
+            reward *= self.reward_scale / 2.25
 
         return reward
 
@@ -350,7 +358,7 @@ class Lift(RobotEnv):
         # self.r_finger_geom_ids = [
         #     self.sim.model.geom_name2id(x) for x in self.robots[0].gripper.important_geoms["right_finger"]
         # ]
-        # self.cube_geom_id = self.sim.model.geom_name2id("cube")
+        self.cube_geom_id = self.sim.geom_name2id("cube")
         self.cube_body_id = self.sim.body_name2id("cube")
         self.l_finger_geom_ids = self.sim.geom_name2id(self.robots[0].gripper.important_geoms["left_finger"])
         self.r_finger_geom_ids = self.sim.geom_name2id(self.robots[0].gripper.important_geoms["right_finger"])

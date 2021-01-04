@@ -1,7 +1,7 @@
 import rospy
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, GetBodyStates, GetBodyStatesRequest, \
-    GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest
+    GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest, GetContactsRequest, GetContacts
 from std_srvs.srv import Trigger, TriggerRequest
 from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
 import moveit_commander
@@ -191,6 +191,11 @@ class MujocoROS:
     @property
     def ncam(self):
         param_name = self.prefix + '/ncam'
+        return self._get_param(param_name)
+
+    @property
+    def ncon(self):
+        param_name = self.prefix + '/ncon'
         return self._get_param(param_name)
 
     def joint_pos_indexes(self, robot_joints):
@@ -621,6 +626,17 @@ class MujocoROS:
             raise MujocoROSError("Invalid object quaternion format!")
 
         return object_quat
+
+    def get_contacts(self):
+        request = GetContactsRequest()
+        try:
+            get_contacts_srv = rospy.ServiceProxy(self.prefix + "/get_contacts", GetContacts)
+            get_contacts_srv.wait_for_service(3)
+            contact_geoms = get_contacts_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call falied: {}".format(e))
+
+        return np.array(contact_geoms.geom1), np.array(contact_geoms.geom2)
 
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
