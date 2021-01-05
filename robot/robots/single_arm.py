@@ -86,7 +86,10 @@ class SingleArm(Robot):
         self.eef_site_id = None                             # xml element id for eef in mjsim
         self.eef_cylinder_id = None                         # xml element id for eef cylinder in mjsim
         # self.torques = None                               # Current torques being applied
-        self.pose = None                                   # Current target pose being applied
+        # self.pose = None                                   # Current target pose being applied
+        # self.pos = None
+        # self.quat = None
+        self.scaled_arm_action = None
 
         self.recent_qpos = None                             # Current and last robot arm qpos
         self.recent_actions = None                          # Current and last action applied
@@ -281,12 +284,14 @@ class SingleArm(Robot):
             arm_action = action
 
         # # Update the controller goal if this is a new policy step
-        # if policy_step:
-        #     self.controller.set_goal(arm_action)
-        scaled_arm_action = self.controller.scale_action(arm_action)
+        if policy_step:
+            # self.controller.set_goal(arm_action)
+            self.scaled_arm_action = self.controller.scale_action(arm_action)
 
         # # Now run the controller for a step
-        # pos, quat = self.controller.run_controller()
+        # self.pos, self.quat, delta_pos, delta_ori = self.controller.run_controller()
+        # print("quat: {}".format(self.quat))
+        # print("delta_ori: {}".format(delta_ori))
 
         # Clip the torques
         # low, high = self.torque_limits
@@ -309,12 +314,12 @@ class SingleArm(Robot):
         # Apply joint torque control
         # self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
         # Apply pose control
-        # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
+        # self.sim.goto_eef_pose(self.pos, self.quat, wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
         if self.controller.use_ori:
-            self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
+            self.sim.jog_eef_pose(self.scaled_arm_action[:3], self.scaled_arm_action[3:])
         else:
-            self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
+            self.sim.jog_eef_pose(self.scaled_arm_action[:3], np.zeros(3))
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:
@@ -411,11 +416,12 @@ class SingleArm(Robot):
         #     self.sim.data.get_body_xquat(self.robot_model.eef_name), to="xyzw"
         # )
         # self.eef_site_id = self.sim.site_name2id(self.gripper.visualization_sites["grip_site"])
-        di[pf + "eef_pos"] = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
+        eef_pose = self.sim.get_eef_pose(self.gripper.visualization_sites["grip_site"])
+        di[pf + "eef_pos"] = np.array(eef_pose[0])
         # tmp = np.array(self.sim.get_eef_pos(self.gripper.visualization_sites["grip_site"]))
         # assert np.allclose(di[pf + "eef_pos"], tmp, atol=1e-5)
 
-        di[pf + "eef_quat"] = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
+        di[pf + "eef_quat"] = np.array(eef_pose[1])
         # tmp = np.array(self.sim.get_eef_quat(self.robot_model.eef_name))
         # -q and q represent the same rotation
         # assert np.allclose(di[pf + "eef_quat"], tmp, atol=1e-5) or np.allclose(di[pf + "eef_quat"], -tmp, atol=1e-5)

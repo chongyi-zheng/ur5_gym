@@ -3,7 +3,6 @@ from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGro
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, GetBodyStates, GetBodyStatesRequest, \
     GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest, GetContactsRequest, GetContacts
 from std_srvs.srv import Trigger, TriggerRequest
-from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
 import moveit_commander
 import actionlib
 import moveit_msgs.msg
@@ -13,6 +12,7 @@ import sensor_msgs.msg
 import geometry_msgs.msg
 import trajectory_msgs.msg
 import jog_msgs.msg
+import robosuite.utils.transform_utils as T
 
 import sys
 import numpy as np
@@ -471,7 +471,7 @@ class MujocoROS:
 
         return joint_vel
 
-    def get_eef_pos(self, eef_site_name=None):
+    def get_eef_pose(self, eef_site_name=None):
         # if eef_site_name is None:  # read from moveit
         #     eef_pose = self._moveit_manipulator_group.get_current_pose()
         #     eef_pos = [eef_pose.pose.position.x, eef_pose.pose.position.y, eef_pose.pose.position.z]
@@ -506,55 +506,56 @@ class MujocoROS:
         # index_map = dict((name, idx) for idx, name in enumerate(site_states_msg.name))
         # idx = index_map[eef_site_name]
         idx = site_states.name.index(eef_site_name)
-        eef_pos = list(site_states.position[idx].data)
+        eef_pos = np.array(site_states.position[idx].data)
+        eef_quat = T.mat2quat(np.array(site_states.rotation_matrix[idx].data).reshape(3, 3))
 
-        return eef_pos
+        return eef_pos, eef_quat
 
-    def get_eef_quat(self, eef_body_name=None, format="xyzw"):
-        # if eef_body_name is None:  # read from moveit
-        #     eef_pose = self._moveit_manipulator_group.get_current_pose()
-        #     eef_pose_ori = eef_pose.pose.orientation
-        # else:
-        #     # body_states_msg = None
-        #     # try:
-        #     #     body_states_msg = rospy.wait_for_message(self.prefix + '/body_states',
-        #     #                                              mujoco_ros_msgs.msg.BodyStates, 3)
-        #     # except rospy.ROSException as e:
-        #     #     MujocoROSError("Message read failed: {}".format(e))
-        #     # body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
-        #     # with self._body_states_msg_lock:
-        #     #     body_states_msg = copy.deepcopy(self._body_states_msg)
-        #     request = GetBodyStatesRequest()
-        #     try:
-        #         get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
-        #         get_body_states_srv.wait_for_service(3)
-        #         body_states = get_body_states_srv(request)
-        #     except rospy.ServiceException as e:
-        #         raise MujocoROSError("Service call failed: {}".format(e))
-        #     # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
-        #     # idx = index_map[eef_body_name]
-        #     idx = body_states.name.index(eef_body_name)
-        #     eef_pose_ori = body_states.pose[idx].orientation
-        request = GetBodyStatesRequest()
-        try:
-            get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
-            get_body_states_srv.wait_for_service(3)
-            body_states = get_body_states_srv(request)
-        except rospy.ServiceException as e:
-            raise MujocoROSError("Service call failed: {}".format(e))
-        # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
-        # idx = index_map[eef_body_name]
-        idx = body_states.name.index(eef_body_name)
-        eef_pose_ori = body_states.pose[idx].orientation
-
-        if format == "xyzw":
-            eef_quat = [eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z, eef_pose_ori.w]
-        elif format == "wxyz":
-            eef_quat = [eef_pose_ori.w, eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z]
-        else:
-            raise MujocoROSError("Invalid end effector quaternion format!")
-
-        return eef_quat
+    # def get_eef_quat(self, eef_body_name=None, format="xyzw"):
+    #     # if eef_body_name is None:  # read from moveit
+    #     #     eef_pose = self._moveit_manipulator_group.get_current_pose()
+    #     #     eef_pose_ori = eef_pose.pose.orientation
+    #     # else:
+    #     #     # body_states_msg = None
+    #     #     # try:
+    #     #     #     body_states_msg = rospy.wait_for_message(self.prefix + '/body_states',
+    #     #     #                                              mujoco_ros_msgs.msg.BodyStates, 3)
+    #     #     # except rospy.ROSException as e:
+    #     #     #     MujocoROSError("Message read failed: {}".format(e))
+    #     #     # body_states_msg = rospy.wait_for_message(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, 5)
+    #     #     # with self._body_states_msg_lock:
+    #     #     #     body_states_msg = copy.deepcopy(self._body_states_msg)
+    #     #     request = GetBodyStatesRequest()
+    #     #     try:
+    #     #         get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+    #     #         get_body_states_srv.wait_for_service(3)
+    #     #         body_states = get_body_states_srv(request)
+    #     #     except rospy.ServiceException as e:
+    #     #         raise MujocoROSError("Service call failed: {}".format(e))
+    #     #     # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+    #     #     # idx = index_map[eef_body_name]
+    #     #     idx = body_states.name.index(eef_body_name)
+    #     #     eef_pose_ori = body_states.pose[idx].orientation
+    #     request = GetBodyStatesRequest()
+    #     try:
+    #         get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+    #         get_body_states_srv.wait_for_service(3)
+    #         body_states = get_body_states_srv(request)
+    #     except rospy.ServiceException as e:
+    #         raise MujocoROSError("Service call failed: {}".format(e))
+    #     # index_map = dict((name, idx) for idx, name in enumerate(body_states_msg.name))
+    #     # idx = index_map[eef_body_name]
+    #     idx = body_states.name.index(eef_body_name)
+    #     eef_pose_ori = body_states.pose[idx].orientation
+    #
+    #     if format == "xyzw":
+    #         eef_quat = [eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z, eef_pose_ori.w]
+    #     elif format == "wxyz":
+    #         eef_quat = [eef_pose_ori.w, eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z]
+    #     else:
+    #         raise MujocoROSError("Invalid end effector quaternion format!")
+    #
+    #     return eef_quat
 
     def get_eef_vel(self):
         joint_values = self.get_joint_pos(self._arm_joint_names)

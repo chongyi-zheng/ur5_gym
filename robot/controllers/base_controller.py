@@ -149,8 +149,9 @@ class Controller(object, metaclass=abc.ABCMeta):
             # self.ee_pos_vel = np.array(self.sim.data.site_xvelp[self.sim.model.site_name2id(self.eef_name)])
             # self.ee_ori_vel = np.array(self.sim.data.site_xvelr[self.sim.model.site_name2id(self.eef_name)])
             # TODO (chongyi zheng): Do we need this?
-            # self.ee_pos = np.array(self.sim.get_eef_pos())
-            # self.ee_ori_mat = T.quat2mat(np.array(self.sim.get_eef_quat()))
+            eef_pose = self.sim.get_eef_pose(self.eef_name)
+            self.ee_pos = np.array(eef_pose[0])
+            self.ee_ori_mat = T.quat2mat(np.array(eef_pose[1]))
             # ee_vel = self.sim.get_eef_vel()
             # self.ee_pos_vel = np.array(ee_vel[:3])
             # self.ee_ori_vel = np.array(ee_vel[3:])

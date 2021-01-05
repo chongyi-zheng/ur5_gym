@@ -241,7 +241,8 @@ class Lift(RobotEnv):
             # cube_pos = self.sim.data.body_xpos[self.cube_body_id]
             # gripper_site_pos = self.sim.data.site_xpos[self.robots[0].eef_site_id]
             cube_pos = np.array(self.sim.get_object_pos("cube"))
-            gripper_site_pos = np.array(self.sim.get_eef_pos(self.robots[0].gripper.visualization_sites["grip_site"]))
+            gripper_site_pos = np.array(
+                self.sim.get_eef_pose(self.robots[0].gripper.visualization_sites["grip_site"])[0])
             dist = np.linalg.norm(gripper_site_pos - cube_pos)
             reaching_reward = 1 - np.tanh(10.0 * dist)
             reward += reaching_reward
@@ -425,7 +426,8 @@ class Lift(RobotEnv):
             di["cube_quat"] = cube_quat
 
             # gripper_site_pos = np.array(self.sim.data.site_xpos[self.robots[0].eef_site_id])
-            gripper_site_pos = np.array(self.sim.get_eef_pos(self.robots[0].gripper.visualization_sites["grip_site"]))
+            gripper_site_pose = self.sim.get_eef_pose(self.robots[0].gripper.visualization_sites["grip_site"])
+            gripper_site_pos = np.array(gripper_site_pose[0])
             di[pr + "gripper_to_cube"] = gripper_site_pos - cube_pos
 
             di["object-state"] = np.concatenate(

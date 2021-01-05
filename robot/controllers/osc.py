@@ -295,6 +295,7 @@ class OperationalSpaceController(Controller):
                 pass
         else:
             self.pos = np.array(self.goal_pos)
+        delta_pos = np.round(np.array(self.goal_pos) - self.ee_pos, 3)
 
         if self.interpolator_ori is not None:
             # relative orientation based on difference between current ori and ref
@@ -303,9 +304,9 @@ class OperationalSpaceController(Controller):
             ori_error = self.interpolator_ori.get_interpolated_goal()
             self.ori = T.quat_multiply(T.mat2quat(self.ee_ori_mat), T.mat2quat(ori_error))
         else:
-            # desired_ori = np.array(self.goal_ori)
-            # ori_error = orientation_error(desired_ori, self.ee_ori_mat)
             self.ori = T.mat2quat(np.array(self.goal_ori))
+        desired_ori = np.array(self.goal_ori)
+        delta_ori = np.round(orientation_error(desired_ori, self.ee_ori_mat), 3)
 
         # # Compute desired force and torque based on errors
         # position_error = desired_pos - self.ee_pos
@@ -346,10 +347,10 @@ class OperationalSpaceController(Controller):
         #                                   self.initial_joint, self.joint_pos, self.joint_vel)
         #
         # Always run superclass call for any cleanups at the end
-        super().run_controller()
+        # super().run_controller()
         #
         # return self.torques
-        return self.pos, self.ori
+        return self.pos, self.ori, delta_pos, delta_ori
 
     def reset_goal(self):
         """
