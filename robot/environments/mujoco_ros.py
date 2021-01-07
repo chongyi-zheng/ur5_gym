@@ -341,14 +341,20 @@ class MujocoROS:
     def reset_controllers(self):
         try:
             for controller_name, controller in self._controllers.items():
-                controller["traj_client"].wait_for_server(rospy.Duration(10))
+                controller["traj_client"].wait_for_server(rospy.Duration(15))
                 rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
         except:
-            self.terminate()
-            self.spawn()
-            for controller_name, controller in self._controllers.items():
-                controller["traj_client"].wait_for_server(rospy.Duration(10))
-                rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
+            success = False
+            while not success:
+                try:
+                    self.terminate()
+                    self.spawn()
+                    for controller_name, controller in self._controllers.items():
+                        controller["traj_client"].wait_for_server(rospy.Duration(15))
+                        rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
+                    success = True
+                except:
+                    success = False
 
         return True
 
@@ -356,12 +362,15 @@ class MujocoROS:
         if joint_type != 'pos':
             raise MujocoROSError("Joint type \"{}\" is unknown!".format(joint_type))
 
+        selected_joint_names = None
         if actuator_names is None:
             actuator_names = [joint_name.replace('joint', joint_type) for joint_name in joint_names]
+        else:
+            selected_joint_names = [actuator_name.replace(joint_type, 'joint') for actuator_name in actuator_names]
         param_name = self.prefix + '/actuator_ctrlrange'
         selected_actuator_ctrlranges = np.array(self._get_param(param_name, selections=actuator_names))
 
-        return selected_actuator_ctrlranges
+        return selected_actuator_ctrlranges, selected_joint_names
 
     def get_joint_pos(self, joint_names, raw=False):
         # joint_states_msg = None

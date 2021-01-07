@@ -240,8 +240,8 @@ class MujocoEnv(metaclass=EnvMeta):
             # self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
 
         # Set the camera angle for viewing
-        if self.render_camera is not None:
-            self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
+        # if self.render_camera is not None:
+        #     self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
 
         # additional housekeeping
         # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless
@@ -285,12 +285,12 @@ class MujocoEnv(metaclass=EnvMeta):
 
         # Loop through the simulation at the model timestep rate until we're ready to take the next policy step
         # (as defined by the control frequency specified at the environment level)
-        for i in range(int(self.control_timestep / self.model_timestep)):
-            # self.sim.forward()
-            self._pre_action(action, policy_step)
-            # self.sim.step()
-            policy_step = False
-        # self._pre_action(action, policy_step)
+        # for i in range(int(self.control_timestep / self.model_timestep)):
+        #     # self.sim.forward()
+        #     self._pre_action(action, policy_step)
+        #     # self.sim.step()
+        #     policy_step = False
+        self._pre_action(action, policy_step)
 
         # Note: this is done all at once to avoid floating point inaccuracies
         # self.cur_time += self.control_timestep

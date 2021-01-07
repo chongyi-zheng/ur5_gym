@@ -33,10 +33,10 @@ class Robotiq85GripperBase(GripperModel):
     @property
     def _joints(self):
         # TODO (chongyi zheng): contain only 'finger_joint' and 'right_outer_knuckle_joint'
-        # return ["finger_joint", "left_inner_finger_joint",
-        #         "left_inner_knuckle_joint", "right_outer_knuckle_joint",
-        #         "right_inner_finger_joint", "right_inner_knuckle_joint"]
-        return ["finger_joint", "right_outer_knuckle_joint"]
+        return ["finger_joint", "left_inner_finger_joint",
+                "left_inner_knuckle_joint", "right_outer_knuckle_joint",
+                "right_inner_finger_joint", "right_inner_knuckle_joint"]
+        # return ["finger_joint", "right_outer_knuckle_joint"]
 
     @property
     def _actuators(self):

@@ -284,9 +284,10 @@ class SingleArm(Robot):
             arm_action = action
 
         # # Update the controller goal if this is a new policy step
-        if policy_step:
-            # self.controller.set_goal(arm_action)
-            self.scaled_arm_action = self.controller.scale_action(arm_action)
+        # if policy_step:
+        #     # self.controller.set_goal(arm_action)
+        #     self.scaled_arm_action = self.controller.scale_action(arm_action)
+        self.scaled_arm_action = self.controller.scale_action(arm_action)
 
         # # Now run the controller for a step
         # self.pos, self.quat, delta_pos, delta_ori = self.controller.run_controller()
@@ -349,14 +350,14 @@ class SingleArm(Robot):
         # TODO (chongyi zheng): control with ROS
         # rescale normalized gripper action to control ranges
         # ctrl_range = self.sim.actuator_ctrlrange[self._ref_joint_gripper_actuator_indexes]
-        ctrl_range = np.array(self.sim.get_joint_limits(
-            joint_names=self.gripper_joints, actuator_names=self.gripper.actuators, joint_type='pos'))
+        ctrl_range, joint_names = self.sim.get_joint_limits(
+            joint_names=self.gripper_joints, actuator_names=self.gripper.actuators, joint_type='pos')
         bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
         weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
         applied_gripper_joint = bias + weight * gripper_action_actual
         # self.sim.data.ctrl[self._ref_joint_gripper_actuator_indexes] = applied_gripper_action
         # current_gripper_joint = self.sim.get_joint_pos(self.gripper_joints)
-        gripper_joint_positions = dict(zip(self.gripper_joints, applied_gripper_joint))
+        gripper_joint_positions = dict(zip(joint_names, applied_gripper_joint))
         self.sim.goto_gripper_positions(gripper_joint_positions)
         # self.sim.set_joint_qpos(self.gripper_joints, applied_gripper_joint)
         # print("applied_gripper_joint: {}".format(applied_gripper_joint))
@@ -483,7 +484,7 @@ class SingleArm(Robot):
         # Position limit values pulled from relevant robot.xml file
         # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
         # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
-        limits = self.sim.get_joint_limits(joint_names=self.robot_joints, joint_type='pos')
+        limits, _ = self.sim.get_joint_limits(joint_names=self.robot_joints, joint_type='pos')
         low = np.array(limits[:, 0])
         high = np.array(limits[:, 1])
 
