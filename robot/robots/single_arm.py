@@ -203,7 +203,12 @@ class SingleArm(Robot):
                 #     self._ref_gripper_joint_pos_indexes
                 # ] = self.gripper.init_qpos
                 # self.sim.open_gripper()
-                init_gripper_positions = dict(zip(self.gripper_joints, self.gripper.init_qpos))
+                if len(self.gripper_joints) == len(self.gripper.init_qpos):
+                    init_gripper_positions = dict(zip(self.gripper_joints, self.gripper.init_qpos))
+                else:
+                    _, joint_names = self.sim.get_joint_limits(
+                        self.gripper_joints, actuator_names=self.gripper.actuators, joint_type='pos')
+                    init_gripper_positions = dict(zip(joint_names, self.gripper.init_qpos))
                 self.sim.goto_gripper_positions(init_gripper_positions)
 
         # TODO (chongyi zheng): do we need this?
