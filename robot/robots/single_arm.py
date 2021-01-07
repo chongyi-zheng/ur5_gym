@@ -290,7 +290,7 @@ class SingleArm(Robot):
 
         # # Update the controller goal if this is a new policy step
         if policy_step:
-        #     # self.controller.set_goal(arm_action)
+            # self.controller.set_goal(arm_action)
             self.scaled_arm_action = self.controller.scale_action(arm_action)
         # self.scaled_arm_action = self.controller.scale_action(arm_action)
 

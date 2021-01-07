@@ -23,8 +23,8 @@ if __name__ == "__main__":
     parser.add_argument("--controller", type=str, default="osc_pose",
                         help="Choice of controller. Can be 'ik' or 'osc_pose' or 'osc_position'")
     parser.add_argument("--device", type=str, default="keyboard")
-    parser.add_argument("--pos-sensitivity", type=float, default=0.125, help="How much to scale position user inputs")
-    parser.add_argument("--rot-sensitivity", type=float, default=1.0, help="How much to scale rotation user inputs")
+    parser.add_argument("--pos-sensitivity", type=float, default=1.5, help="How much to scale position user inputs")
+    parser.add_argument("--rot-sensitivity", type=float, default=1.5, help="How much to scale rotation user inputs")
     args = parser.parse_args()
 
     # Import controller config for EE IK or OSC (pos/ori)
