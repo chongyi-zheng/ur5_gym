@@ -108,7 +108,8 @@ class MujocoEnv(metaclass=EnvMeta):
         self.cur_time = None
         self.model_timestep = None
         self.control_timestep = None
-        self.deterministic_reset = False            # Whether to add randomized resetting of objects / robot joints
+        # TODO (chongyi zheng): default is True
+        self.deterministic_reset = True            # Whether to add randomized resetting of objects / robot joints
 
         # Load the model
         self._load_model()

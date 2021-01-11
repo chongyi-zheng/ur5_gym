@@ -170,6 +170,7 @@ if __name__ == "__main__":
 
             # Step through the simulation and render
             start_time = time.time()
+            action = np.array([0.000, -15.000, 0.000, -0.000, -0.000, 0.000, -1.000])
             obs, reward, done, info = env.step(action)
             end_time = time.time()
             # print("Environment step time: {}s".format(end_time - start_time))

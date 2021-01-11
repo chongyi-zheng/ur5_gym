@@ -516,7 +516,8 @@ class MujocoROS:
         # idx = index_map[eef_site_name]
         idx = site_states.name.index(eef_site_name)
         eef_pos = np.array(site_states.position[idx].data)
-        eef_quat = T.mat2quat(np.array(site_states.rotation_matrix[idx].data).reshape(3, 3))
+        # (chongyi zheng): to be compatible with robosuite
+        eef_quat = -1 * T.mat2quat(np.array(site_states.rotation_matrix[idx].data).reshape(3, 3))
 
         return eef_pos, eef_quat
 
