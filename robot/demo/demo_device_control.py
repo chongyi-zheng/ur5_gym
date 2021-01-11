@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
             # Step through the simulation and render
             start_time = time.time()
-            action = np.array([0.000, 0.000, 0.000, -0.000, 11.250, 0.0, -1.000])
+            # action = np.array([0.000, 0.000, 0.000, -0.000, 11.250, 0.0, -1.000])
             last_eef_pos = obs['robot0_eef_pos']
             obs, reward, done, info = env.step(action)
             new_eef_pos = obs['robot0_eef_pos']

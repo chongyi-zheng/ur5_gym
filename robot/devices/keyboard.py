@@ -185,29 +185,29 @@ class Keyboard(Device):
 
         # controls for moving orientation
         elif key == keyboard.KeyCode.from_char('z'):
-            drot = rotation_matrix(angle=0.01 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
+            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates x
-            self.raw_drotation[1] -= 0.01 * self.rot_sensitivity
+            self.raw_drotation[1] -= 0.1 * self.rot_sensitivity
         elif key == keyboard.KeyCode.from_char('x'):
-            drot = rotation_matrix(angle=-0.01 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
+            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates x
-            self.raw_drotation[1] += 0.01 * self.rot_sensitivity
+            self.raw_drotation[1] += 0.1 * self.rot_sensitivity
         elif key == keyboard.KeyCode.from_char('t'):
-            drot = rotation_matrix(angle=0.01 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
+            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates y
-            self.raw_drotation[0] += 0.01 * self.rot_sensitivity
+            self.raw_drotation[0] += 0.1 * self.rot_sensitivity
         elif key == keyboard.KeyCode.from_char('g'):
-            drot = rotation_matrix(angle=-0.01 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
+            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates y
-            self.raw_drotation[0] -= 0.01 * self.rot_sensitivity
+            self.raw_drotation[0] -= 0.1 * self.rot_sensitivity
         elif key == keyboard.KeyCode.from_char('c'):
-            drot = rotation_matrix(angle=0.01 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
+            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates z
-            self.raw_drotation[2] += 0.01 * self.rot_sensitivity
+            self.raw_drotation[2] += 0.1 * self.rot_sensitivity
         elif key == keyboard.KeyCode.from_char('v'):
-            drot = rotation_matrix(angle=-0.01 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
+            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates z
-            self.raw_drotation[2] -= 0.01 * self.rot_sensitivity
+            self.raw_drotation[2] -= 0.1 * self.rot_sensitivity
 
     # def on_release(self, window, key, scancode, action, mods):
     #     """

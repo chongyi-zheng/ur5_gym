@@ -842,7 +842,7 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.035,
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.05,  # 0.05
                      angular_delta_scale=0.1):
         """Send jog message directly"""
 
