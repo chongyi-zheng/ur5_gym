@@ -289,10 +289,10 @@ class SingleArm(Robot):
             arm_action = action
 
         # # Update the controller goal if this is a new policy step
-        if policy_step:
-            # self.controller.set_goal(arm_action)
-            self.scaled_arm_action = self.controller.scale_action(arm_action)
-        # self.scaled_arm_action = self.controller.scale_action(arm_action)
+        # if policy_step:
+        #     # self.controller.set_goal(arm_action)
+        #     self.scaled_arm_action = self.controller.scale_action(arm_action)
+        self.scaled_arm_action = self.controller.scale_action(arm_action)
 
         # # Now run the controller for a step
         # self.pos, self.quat, delta_pos, delta_ori = self.controller.run_controller()
