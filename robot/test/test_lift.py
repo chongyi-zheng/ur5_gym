@@ -8,6 +8,8 @@ import robot
 from robosuite import load_controller_config
 # from robosuite.utils.input_utils import input2action
 from robot.utils.input_utils import input2action
+from robosuite.utils.control_utils import orientation_error
+import robosuite.utils.transform_utils as T
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -123,6 +125,7 @@ if __name__ == "__main__":
         # Initialize device control
         device.start_control()
 
+        temp_array = []
         while True:
             # Set active robot
             active_robot = env.robots[0] if args.config == "bimanual" else env.robots[args.arm == "left"]
@@ -170,8 +173,11 @@ if __name__ == "__main__":
 
             # Step through the simulation and render
             start_time = time.time()
-            action = np.array([0.000, -15.000, 0.000, -0.000, -0.000, 0.000, -1.000])
+            action = np.array([0.000, -15.000, 0.000, -0.000, 0.0, 0.0, -1.000])
+            last_eef_pos = obs['robot0_eef_pos']
             obs, reward, done, info = env.step(action)
+            new_eef_pos = obs['robot0_eef_pos']
+            temp_array.append((new_eef_pos - last_eef_pos)[1])
             end_time = time.time()
             # print("Environment step time: {}s".format(end_time - start_time))
             # TODO (chongyi zheng): Do we need this?

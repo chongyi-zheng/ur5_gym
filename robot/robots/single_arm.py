@@ -288,11 +288,10 @@ class SingleArm(Robot):
         else:
             arm_action = action
 
-        # # Update the controller goal if this is a new policy step
+        # Update the controller goal if this is a new policy step
         # if policy_step:
         #     # self.controller.set_goal(arm_action)
         #     self.scaled_arm_action = self.controller.scale_action(arm_action)
-        self.scaled_arm_action = self.controller.scale_action(arm_action)
 
         # # Now run the controller for a step
         # self.pos, self.quat, delta_pos, delta_ori = self.controller.run_controller()
@@ -322,10 +321,12 @@ class SingleArm(Robot):
         # Apply pose control
         # self.sim.goto_eef_pose(self.pos, self.quat, wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
-        if self.controller.use_ori:
-            self.sim.jog_eef_pose(self.scaled_arm_action[:3], self.scaled_arm_action[3:])
-        else:
-            self.sim.jog_eef_pose(self.scaled_arm_action[:3], np.zeros(3))
+        if policy_step:
+            self.scaled_arm_action = self.controller.scale_action(arm_action)
+            if self.controller.use_ori:
+                self.sim.jog_eef_pose(self.scaled_arm_action[:3], self.scaled_arm_action[3:])
+            else:
+                self.sim.jog_eef_pose(self.scaled_arm_action[:3], np.zeros(3))
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:
