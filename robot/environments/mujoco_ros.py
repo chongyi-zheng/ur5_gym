@@ -842,8 +842,8 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=1.25,  # 0.05
-                     angular_delta_scale=0.5):  # 0.1
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.125,  # 0.05
+                     angular_delta_scale=0.1):  # 0.1
         """Send jog message directly"""
 
         scaled_linear_delta = linear_delta_scale * np.array(linear_delta)

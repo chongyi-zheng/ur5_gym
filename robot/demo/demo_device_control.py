@@ -220,9 +220,11 @@ if __name__ == "__main__":
             # Step through the simulation and render
             start_time = time.time()
             # action = np.array([0.000, 0.000, 0.000, -0.000, 11.250, 0.0, -1.000])
-            last_eef_pos = obs['robot0_eef_pos']
+            action = np.array([0.000, 0.000, 0.000, -0.000, 11.250, 0.0, -1.000])
+            last_eef_pos = obs['robot0_eef_quat']
             obs, reward, done, info = env.step(action)
-            new_eef_pos = obs['robot0_eef_pos']
-            temp_array.append(new_eef_pos[1] - last_eef_pos[1])
+            new_eef_pos = obs['robot0_eef_quat']
+            ori_diff = orientation_error(T.quat2mat(new_eef_pos), T.quat2mat(last_eef_pos))
+            temp_array.append((new_eef_pos - last_eef_pos)[1])
             end_time = time.time()
             env.render()
