@@ -339,11 +339,17 @@ class MujocoROS:
                 controller["traj_client"].wait_for_server(rospy.Duration(10))
                 rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
         except:
-            self.terminate()
-            self.spawn()
-            for controller_name, controller in self._controllers.items():
-                controller["traj_client"].wait_for_server(rospy.Duration(10))
-                rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
+            success = False
+            while not success:
+                try:
+                    self.terminate()
+                    self.spawn()
+                    for controller_name, controller in self._controllers.items():
+                        controller["traj_client"].wait_for_server(rospy.Duration(10))
+                        rospy.loginfo("{} is ready.".format(controller_name + "/" + controller["action_ns"]))
+                    success = True
+                except:
+                    success = False
 
         return True
 
@@ -815,8 +821,12 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True):
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.75,  # 0.125
+                     angular_delta_scale=0.5):  # 0.1
         """Send jog message directly"""
+        scaled_linear_delta = -1.0 * linear_delta_scale * np.array(linear_delta)
+        # to be compatible with MuJoCo rotation direction
+        scaled_angular_delta = -1.0 * angular_delta_scale * np.array(angular_delta)
 
         # if (rospy.Time.now() - self._jog_frame_msg.header.stamp).to_sec() > 0.1:
         jog_frame_msg = jog_msgs.msg.JogFrame()
@@ -824,12 +834,12 @@ class MujocoROS:
         jog_frame_msg.header.frame_id = self._jog_base_link
         jog_frame_msg.group_name = self._jog_group
         jog_frame_msg.link_name = self._jog_target_link
-        jog_frame_msg.linear_delta.x = linear_delta[0]
-        jog_frame_msg.linear_delta.y = linear_delta[1]
-        jog_frame_msg.linear_delta.z = linear_delta[2]
-        jog_frame_msg.angular_delta.x = angular_delta[0]
-        jog_frame_msg.angular_delta.y = angular_delta[1]
-        jog_frame_msg.angular_delta.z = angular_delta[2]
+        jog_frame_msg.linear_delta.x = scaled_linear_delta[0]
+        jog_frame_msg.linear_delta.y = scaled_linear_delta[1]
+        jog_frame_msg.linear_delta.z = scaled_linear_delta[2]
+        jog_frame_msg.angular_delta.x = scaled_angular_delta[0]
+        jog_frame_msg.angular_delta.y = scaled_angular_delta[1]
+        jog_frame_msg.angular_delta.z = scaled_angular_delta[2]
         jog_frame_msg.avoid_collisions = avoid_collisions
 
         # Publish only if the all command are not equal zero
@@ -971,8 +981,8 @@ class MujocoROS:
     #             if wait:
     #                 try:
     #                     controller_val["traj_client"].send_goal_and_wait(
-    #                         goal, execute_timeout=rospy.Duration(time_from_start),
-    #                         preempt_timeout=rospy.Duration(time_from_start))
+    #                         goal, execute_timeout=rospy.Duration.from_sec(time_from_start),
+    #                         preempt_timeout=rospy.Duration.from_sec(time_from_start))
     #                 except:
     #                     raise MujocoROSError("Calling trajectory client failed!")
     #             else:
