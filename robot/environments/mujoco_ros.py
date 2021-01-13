@@ -842,12 +842,13 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.125,  # 0.05
-                     angular_delta_scale=0.1):  # 0.1
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.75,  # 0.125
+                     angular_delta_scale=0.5):  # 0.1
         """Send jog message directly"""
 
-        scaled_linear_delta = linear_delta_scale * np.array(linear_delta)
-        scaled_angular_delta = angular_delta_scale * np.array(angular_delta)
+        scaled_linear_delta = -1.0 * linear_delta_scale * np.array(linear_delta)
+        # to be compatible with MuJoCo rotation direction
+        scaled_angular_delta = -1.0 * angular_delta_scale * np.array(angular_delta)
 
         # if (rospy.Time.now() - self._jog_frame_msg.header.stamp).to_sec() > 0.1:
         jog_frame_msg = jog_msgs.msg.JogFrame()
