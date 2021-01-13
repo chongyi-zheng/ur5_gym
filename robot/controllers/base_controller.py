@@ -144,9 +144,9 @@ class Controller(object, metaclass=abc.ABCMeta):
             eef_pose = self.sim.get_eef_pose(self.eef_name)
             self.ee_pos = np.array(eef_pose[0])
             self.ee_ori_mat = T.quat2mat(np.array(eef_pose[1]))
-            ee_vel = self.sim.get_eef_vel()
-            self.ee_pos_vel = np.array(ee_vel[:3])
-            self.ee_ori_vel = np.array(ee_vel[3:])
+            ee_vel = self.sim.get_eef_vel(self.eef_name, self.joint_index)
+            self.ee_pos_vel = np.array(ee_vel[0])
+            self.ee_ori_vel = np.array(ee_vel[1])
 
             self.joint_pos = np.array(self.sim.get_joint_pos(joint_index=self.joint_index))
             self.joint_vel = np.array(self.sim.get_joint_vel(joint_index=self.joint_index))
@@ -154,16 +154,16 @@ class Controller(object, metaclass=abc.ABCMeta):
             # self.J_pos = np.array(self.sim.data.get_site_jacp(self.eef_name).reshape((3, -1))[:, self.qvel_index])
             # self.J_ori = np.array(self.sim.data.get_site_jacr(self.eef_name).reshape((3, -1))[:, self.qvel_index])
             # self.J_full = np.array(np.vstack([self.J_pos, self.J_ori]))
-            jac = self.sim.get_jacobian(self.eef_name)
-            self.J_pos = np.array(jac[0])
-            self.J_ori = np.array(jac[1])
-            self.J_full = np.array(jac[2])
+            jac = self.sim.get_jacobian(self.eef_name, raw=True)
+            self.J_pos = np.array(jac[0][:, self.qvel_index])
+            self.J_ori = np.array(jac[1][:, self.qvel_index])
+            self.J_full = np.array(jac[2][:, self.qvel_index])
 
             # mass_matrix = np.ndarray(shape=(len(self.sim.data.qvel) ** 2,), dtype=np.float64, order='C')
             # mujoco_py.cymj._mj_fullM(self.sim.model, mass_matrix, self.sim.data.qM)
             # mass_matrix = np.reshape(mass_matrix, (len(self.sim.data.qvel), len(self.sim.data.qvel)))
             # self.mass_matrix = mass_matrix[self.qvel_index, :][:, self.qvel_index]
-            self.mass_matrix = np.array(self.sim.get_mass_matrix())
+            self.mass_matrix = np.array(self.sim.get_mass_matrix())[self.qvel_index, :][:, self.qvel_index]
 
             # Clear self.new_update
             self.new_update = False

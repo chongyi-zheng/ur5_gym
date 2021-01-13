@@ -128,7 +128,7 @@ class Robot(object):
         # Update base pos / ori references
         # self.base_pos = self.sim.data.get_body_xpos(self.robot_model.robot_base)
         # self.base_ori = T.mat2quat(self.sim.data.get_body_xmat(self.robot_model.robot_base).reshape((3, 3)))
-        base_pose = self.sim.get_eef_pose(self.robot_model.robot_base)
+        base_pose = self.sim.get_body_pose(self.robot_model.robot_base)
         self.base_pos = np.array(base_pose[0])
         self.base_ori = T.quat2mat(base_pose[1])
 

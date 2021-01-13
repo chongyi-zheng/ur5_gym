@@ -62,7 +62,7 @@ class MujocoROS:
         self._moveit_robot = None
         self._moveit_manipulator_group = None
         self._arm_joint_names = None
-        self.reset_moveit()
+        # self.reset_moveit()
 
         # joint trajectory controllers
         self._controllers = self._get_controllers()
@@ -88,7 +88,7 @@ class MujocoROS:
         #     self._joint_names = self._get_param("/robot_joints")
         # except MujocoROSError:
         #     self._joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._state_validity = StateValidity(self.state_validity_srv)
+        # self._state_validity = StateValidity(self.state_validity_srv)
 
         # subscribers and messages
         # self._joint_states_msg_lock = Lock()
@@ -557,8 +557,10 @@ class MujocoROS:
             raise MujocoROSError("Service call failed: {}".format(e))
 
         idx = body_states.name.index(body_name)
-        body_pos = np.array(body_states.pose[idx].position)
-        body_quat = np.array(body_states.pose[idx].orientation)
+        position = body_states.pose[idx].position
+        orientation = body_states.pose[idx].orientation
+        body_pos = np.array([position.x, position.y, position.z])
+        body_quat = np.array([orientation.x, orientation.y, orientation.z, orientation.w])
 
         return body_pos, body_quat
 
@@ -608,18 +610,24 @@ class MujocoROS:
     #
     #     return eef_quat
 
-    def get_eef_vel(self):
-        joint_values = self.get_joint_pos(self._arm_joint_names)
-        jac_mat = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
-        # index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
-        # index = [index_map[name] for name in self._arm_joint_names]
-        indices = [self._moveit_manipulator_group.get_active_joints().index(name) for name in self._arm_joint_names]
-        jac_mat = jac_mat[:, indices]  # switch columns
+    def get_eef_vel(self, eef_site_name=None, joint_index=None):
+        # if raw:
+        # else:
+        #     joint_values = self.get_joint_vel(self._arm_joint_names)
+        #     jac_mat = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
+        #     # index_map = dict((name, idx) for idx, name in enumerate(self._moveit_manipulator_group.get_active_joints()))
+        #     # index = [index_map[name] for name in self._arm_joint_names]
+        #     indices = [self._moveit_manipulator_group.get_active_joints().index(name) for name in self._arm_joint_names]
+        #     jac_mat = jac_mat[:, indices]  # switch columns
+        #
+        #     joint_velocities = self.get_joint_vel(self._arm_joint_names)
+        #     eef_vel = np.matmul(jac_mat, joint_velocities)
+        jac_pos, jac_ori, _ = self.get_jacobian(eef_site_name, raw=True)
+        joint_velocities = self.get_joint_vel(joint_index=joint_index)
+        eef_pos_vel = np.dot(jac_pos[:, joint_index], joint_velocities)
+        eef_ori_vel = np.dot(jac_ori[:, joint_index], joint_velocities)
 
-        joint_velocities = self.get_joint_vel(self._arm_joint_names)
-        eef_vel = np.matmul(jac_mat, joint_velocities)
-
-        return eef_vel
+        return eef_pos_vel, eef_ori_vel
 
     def get_jacobian(self, eef_site_name, raw=False):
         if raw:
@@ -721,8 +729,9 @@ class MujocoROS:
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
-        mass_matrix = np.array(joint_states.mass_matrix).reshape(
-            np.sqrt(joint_states.mass_matrix).astype(int) * np.sqrt(joint_states.mass_matrix).astype(int))
+        data_length = len(joint_states.mass_matrix.data)
+        mass_matrix = np.array(joint_states.mass_matrix.data).reshape(
+            np.sqrt(data_length).astype(int), np.sqrt(data_length).astype(int))
 
         return np.array(mass_matrix)
 
