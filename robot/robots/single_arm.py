@@ -85,16 +85,16 @@ class SingleArm(Robot):
         self.eef_rot_offset = None                          # rotation offsets from final arm link to gripper (quat)
         self.eef_site_id = None                             # xml element id for eef in mjsim
         self.eef_cylinder_id = None                         # xml element id for eef cylinder in mjsim
-        # self.torques = None                               # Current torques being applied
+        self.torques = None                               # Current torques being applied
         # self.pose = None                                   # Current target pose being applied
         # self.pos = None
         # self.quat = None
-        self.scaled_arm_action = None
+        # self.scaled_arm_action = None
 
         self.recent_qpos = None                             # Current and last robot arm qpos
         self.recent_actions = None                          # Current and last action applied
         # TODO (chongyi zheng): Do we need this?
-        # self.recent_torques = None                          # Current and last torques applied
+        self.recent_torques = None                          # Current and last torques applied
         self.recent_ee_forcetorques = None                  # Current and last forces / torques sensed at eef
         self.recent_ee_pose = None                          # Current and last eef pose (pos + ori (quat))
         self.recent_ee_vel = None                           # Current and last eef velocity
@@ -280,7 +280,6 @@ class SingleArm(Robot):
             "environment got invalid action dimension -- expected {}, got {}".format(
                 self.action_dim, len(action))
 
-        # TODO (chongyi zheng): control single arm and gripper with ROS
         gripper_action = None
         if self.has_gripper:
             gripper_action = action[self.controller.control_dim:]  # all indexes past controller dimension indexes
@@ -289,52 +288,31 @@ class SingleArm(Robot):
             arm_action = action
 
         # Update the controller goal if this is a new policy step
-        # if policy_step:
-        #     # self.controller.set_goal(arm_action)
-        #     self.scaled_arm_action = self.controller.scale_action(arm_action)
+        if policy_step:
+            self.controller.set_goal(arm_action)
 
-        # # Now run the controller for a step
-        # self.pos, self.quat, delta_pos, delta_ori = self.controller.run_controller()
-        # print("quat: {}".format(self.quat))
-        # print("delta_ori: {}".format(delta_ori))
+        # Now run the controller for a step
+        torques = self.controller.run_controller()
 
         # Clip the torques
-        # low, high = self.torque_limits
-        # self.torques = np.clip(torques, low, high)
-        # TODO (chongyi zheng): may be we should clip the 3d positions.
-        #  Note: self.position_limits are joint position limits
-        # if self.pose is None:
-        #     self.last_pose = self.pose = np.concatenate([pos, quat])
-        # else:
-        #     self.last_pose = self.pose.copy()
-        #     self.pose = np.concatenate([pos, quat])
+        low, high = self.torque_limits
+        self.torques = np.clip(torques, low, high)
 
-        # if not np.allclose(self.last_pose, self.pose, atol=1e-2) and policy_step:
-        #     print("Not all close")
-
-        # Get gripper action, if applicables
+        # Get gripper action, if applicable
         if self.has_gripper:
             self.grip_action(gripper_action)
 
         # Apply joint torque control
         # self.sim.data.ctrl[self._ref_joint_torq_actuator_indexes] = self.torques
-        # Apply pose control
-        # self.sim.goto_eef_pose(self.pos, self.quat, wait=False)
-        # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
-        if policy_step:
-            self.scaled_arm_action = self.controller.scale_action(arm_action)
-            if self.controller.use_ori:
-                self.sim.jog_eef_pose(self.scaled_arm_action[:3], self.scaled_arm_action[3:])
-            else:
-                self.sim.jog_eef_pose(self.scaled_arm_action[:3], np.zeros(3))
+        self.sim.set_ctrl(self.robot_model.actuators, self.torques)
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:
         #     # Update proprioceptive values
         #     self.recent_qpos.push(self._joint_positions)
         #     self.recent_actions.push(action)
-        #     # self.recent_torques.push(self.torques)
-        #     # self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
+        #     self.recent_torques.push(self.torques)
+        #     self.recent_ee_forcetorques.push(np.concatenate((self.ee_force, self.ee_torque)))
         #     self.recent_ee_pose.push(np.concatenate((self.controller.ee_pos, T.mat2quat(self.controller.ee_ori_mat))))
         #     self.recent_ee_vel.push(np.concatenate((self.controller.ee_pos_vel, self.controller.ee_ori_vel)))
         #

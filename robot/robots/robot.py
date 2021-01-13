@@ -117,8 +117,9 @@ class Robot(object):
         # TODO (chongyi zheng): move to initial position with moveit_commander!
         # Set initial position in sim
         # self.sim.data.qpos[self._ref_joint_pos_indexes] = init_qpos
-        init_joint_positions = dict(zip(self.robot_joints, init_qpos))
-        self.sim.goto_arm_positions(init_joint_positions, wait=True)
+        # init_joint_positions = dict(zip(self.robot_joints, init_qpos))
+        # self.sim.goto_arm_positions(init_joint_positions, wait=True)
+        self.sim.set_joint_qpos(self.robot_joints, init_qpos)
 
         # Load controllers
         self._load_controller()
@@ -127,6 +128,9 @@ class Robot(object):
         # Update base pos / ori references
         # self.base_pos = self.sim.data.get_body_xpos(self.robot_model.robot_base)
         # self.base_ori = T.mat2quat(self.sim.data.get_body_xmat(self.robot_model.robot_base).reshape((3, 3)))
+        base_pose = self.sim.get_eef_pose(self.robot_model.robot_base)
+        self.base_pos = np.array(base_pose[0])
+        self.base_ori = T.quat2mat(base_pose[1])
 
     def setup_references(self):
         """

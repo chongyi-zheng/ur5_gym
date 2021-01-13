@@ -54,47 +54,39 @@ class Controller(object, metaclass=abc.ABCMeta):
         # self.model_timestep = self.sim.model.opt.timestep
         self.model_timestep = self.sim.timestep
         self.eef_name = eef_name
-        # self.joint_index = joint_indexes["joints"]
-        # self.qpos_index = joint_indexes["qpos"]
-        # self.qvel_index = joint_indexes["qvel"]
+        self.joint_index = joint_indexes["joints"]
+        self.qpos_index = joint_indexes["qpos"]
+        self.qvel_index = joint_indexes["qvel"]
 
         # robot states
         self.ee_pos = None
         self.ee_ori_mat = None
         self.ee_pos_vel = None
         self.ee_ori_vel = None
-        # self.joint_pos = None
-        # self.joint_vel = None
+        self.joint_pos = None
+        self.joint_vel = None
 
         # dynamics and kinematics
-        # self.J_pos = None
-        # self.J_ori = None
-        # self.J_full = None
-        # self.mass_matrix = None
+        self.J_pos = None
+        self.J_ori = None
+        self.J_full = None
+        self.mass_matrix = None
 
         # Joint dimension
         self.joint_dim = len(joint_indexes["joints"])
 
         # Torques being outputted by the controller
-        # self.torques = None
-        # Pose being outputted by the controller
-        self.pos = None
-        self.ori = None
+        self.torques = None
 
         # Update flag to prevent redundant update calls
         self.new_update = True
 
-        # TODO (chongyi zheng): Do we need this?
         # Move forward one timestep to propagate updates before taking first update
         # self.sim.forward()
 
-        # TODO (chongyi zheng): Do we need this?
         # Initialize controller by updating internal state and setting the initial joint, pos, and ori
         self.update()
-        # self.initial_joint = self.joint_pos
-        # self.initial_ee_pos = self.ee_pos
-        # self.initial_ee_ori_mat = self.ee_ori_mat
-        # self.initial_joint = None
+        self.initial_joint = self.joint_pos
         self.initial_ee_pos = self.ee_pos
         self.initial_ee_ori_mat = self.ee_ori_mat
 
@@ -152,21 +144,26 @@ class Controller(object, metaclass=abc.ABCMeta):
             eef_pose = self.sim.get_eef_pose(self.eef_name)
             self.ee_pos = np.array(eef_pose[0])
             self.ee_ori_mat = T.quat2mat(np.array(eef_pose[1]))
-            # ee_vel = self.sim.get_eef_vel()
-            # self.ee_pos_vel = np.array(ee_vel[:3])
-            # self.ee_ori_vel = np.array(ee_vel[3:])
+            ee_vel = self.sim.get_eef_vel()
+            self.ee_pos_vel = np.array(ee_vel[:3])
+            self.ee_ori_vel = np.array(ee_vel[3:])
 
-            # self.joint_pos = np.array(self.sim.data.qpos[self.qpos_index])
-            # self.joint_vel = np.array(self.sim.data.qvel[self.qvel_index])
+            self.joint_pos = np.array(self.sim.get_joint_pos(joint_index=self.joint_index))
+            self.joint_vel = np.array(self.sim.get_joint_vel(joint_index=self.joint_index))
 
             # self.J_pos = np.array(self.sim.data.get_site_jacp(self.eef_name).reshape((3, -1))[:, self.qvel_index])
             # self.J_ori = np.array(self.sim.data.get_site_jacr(self.eef_name).reshape((3, -1))[:, self.qvel_index])
             # self.J_full = np.array(np.vstack([self.J_pos, self.J_ori]))
-            #
+            jac = self.sim.get_jacobian(self.eef_name)
+            self.J_pos = np.array(jac[0])
+            self.J_ori = np.array(jac[1])
+            self.J_full = np.array(jac[2])
+
             # mass_matrix = np.ndarray(shape=(len(self.sim.data.qvel) ** 2,), dtype=np.float64, order='C')
             # mujoco_py.cymj._mj_fullM(self.sim.model, mass_matrix, self.sim.data.qM)
             # mass_matrix = np.reshape(mass_matrix, (len(self.sim.data.qvel), len(self.sim.data.qvel)))
             # self.mass_matrix = mass_matrix[self.qvel_index, :][:, self.qvel_index]
+            self.mass_matrix = np.array(self.sim.get_mass_matrix())
 
             # Clear self.new_update
             self.new_update = False

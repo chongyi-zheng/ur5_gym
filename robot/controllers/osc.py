@@ -212,22 +212,20 @@ class OperationalSpaceController(Controller):
             set_pos (Iterable): If set, overrides @action and sets the desired absolute eef position goal state
             set_ori (Iterable): IF set, overrides @action and sets the desired absolute eef orientation goal state
         """
-        # TODO (chongyi zheng): modify the code below to work with ROS
         # Update state
         self.update()
 
         # Parse action based on the impedance mode, and update kp / kd as necessary
-        # if self.impedance_mode == "variable":
-        #     damping_ratio, kp, delta = action[:6], action[6:12], action[12:]
-        #     self.kp = np.clip(kp, self.kp_min, self.kp_max)
-        #     self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
-        # elif self.impedance_mode == "variable_kp":
-        #     kp, delta = action[:6], action[6:]
-        #     self.kp = np.clip(kp, self.kp_min, self.kp_max)
-        #     self.kd = 2 * np.sqrt(self.kp)  # critically damped
-        # else:   # This is case "fixed"
-        #     delta = action
-        delta = action
+        if self.impedance_mode == "variable":
+            damping_ratio, kp, delta = action[:6], action[6:12], action[12:]
+            self.kp = np.clip(kp, self.kp_min, self.kp_max)
+            self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
+        elif self.impedance_mode == "variable_kp":
+            kp, delta = action[:6], action[6:]
+            self.kp = np.clip(kp, self.kp_min, self.kp_max)
+            self.kd = 2 * np.sqrt(self.kp)  # critically damped
+        else:   # This is case "fixed"
+            delta = action
 
         # If we're using deltas, interpret actions as such
         if self.use_delta:
@@ -279,78 +277,72 @@ class OperationalSpaceController(Controller):
         Returns:
              np.array: Command torques
         """
-        # TODO (chongyi zheng): modify the code below to work with ROS
         # Update state
         self.update()
 
-        # desired_pos = None
+        desired_pos = None
         # Only linear interpolator is currently supported
         if self.interpolator_pos is not None:
             # Linear case
             if self.interpolator_pos.order == 1:
-                # desired_pos = self.interpolator_pos.get_interpolated_goal()
-                self.pos = self.interpolator_pos.get_interpolated_goal()
+                desired_pos = self.interpolator_pos.get_interpolated_goal()
             else:
                 # Nonlinear case not currently supported
                 pass
         else:
-            self.pos = np.array(self.goal_pos)
-        delta_pos = np.round(np.array(self.goal_pos) - self.ee_pos, 3)
+            desired_pos = np.array(self.goal_pos)
 
         if self.interpolator_ori is not None:
             # relative orientation based on difference between current ori and ref
             self.relative_ori = orientation_error(self.ee_ori_mat, self.ori_ref)
 
             ori_error = self.interpolator_ori.get_interpolated_goal()
-            self.ori = T.quat_multiply(T.mat2quat(self.ee_ori_mat), T.mat2quat(ori_error))
         else:
-            self.ori = T.mat2quat(np.array(self.goal_ori))
-        desired_ori = np.array(self.goal_ori)
-        delta_ori = np.round(orientation_error(desired_ori, self.ee_ori_mat), 3)
+            desired_ori = np.array(self.goal_ori)
+            ori_error = orientation_error(desired_ori, self.ee_ori_mat)
 
-        # # Compute desired force and torque based on errors
-        # position_error = desired_pos - self.ee_pos
-        # vel_pos_error = -self.ee_pos_vel
-        #
-        # # F_r = kp * pos_err + kd * vel_err
-        # desired_force = (np.multiply(np.array(position_error), np.array(self.kp[0:3]))
-        #                  + np.multiply(vel_pos_error, self.kd[0:3]))
-        #
-        # vel_ori_error = -self.ee_ori_vel
-        #
-        # # Tau_r = kp * ori_err + kd * vel_err
-        # desired_torque = (np.multiply(np.array(ori_error), np.array(self.kp[3:6]))
-        #                   + np.multiply(vel_ori_error, self.kd[3:6]))
-        #
-        # # Compute nullspace matrix (I - Jbar * J) and lambda matrices ((J * M^-1 * J^T)^-1)
-        # lambda_full, lambda_pos, lambda_ori, nullspace_matrix = opspace_matrices(self.mass_matrix,
-        #                                                                          self.J_full,
-        #                                                                          self.J_pos,
-        #                                                                          self.J_ori)
-        #
-        # # Decouples desired positional control from orientation control
-        # if self.uncoupling:
-        #     decoupled_force = np.dot(lambda_pos, desired_force)
-        #     decoupled_torque = np.dot(lambda_ori, desired_torque)
-        #     decoupled_wrench = np.concatenate([decoupled_force, decoupled_torque])
-        # else:
-        #     desired_wrench = np.concatenate([desired_force, desired_torque])
-        #     decoupled_wrench = np.dot(lambda_full, desired_wrench)
-        #
-        # # Gamma (without null torques) = J^T * F + gravity compensations
-        # self.torques = np.dot(self.J_full.T, decoupled_wrench) + self.torque_compensation
-        #
-        # # Calculate and add nullspace torques (nullspace_matrix^T * Gamma_null) to final torques
-        # # Note: Gamma_null = desired nullspace pose torques, assumed to be positional joint control relative
-        # #                     to the initial joint positions
-        # self.torques += nullspace_torques(self.mass_matrix, nullspace_matrix,
-        #                                   self.initial_joint, self.joint_pos, self.joint_vel)
-        #
+        # Compute desired force and torque based on errors
+        position_error = desired_pos - self.ee_pos
+        vel_pos_error = -self.ee_pos_vel
+
+        # F_r = kp * pos_err + kd * vel_err
+        desired_force = (np.multiply(np.array(position_error), np.array(self.kp[0:3]))
+                         + np.multiply(vel_pos_error, self.kd[0:3]))
+
+        vel_ori_error = -self.ee_ori_vel
+
+        # Tau_r = kp * ori_err + kd * vel_err
+        desired_torque = (np.multiply(np.array(ori_error), np.array(self.kp[3:6]))
+                          + np.multiply(vel_ori_error, self.kd[3:6]))
+
+        # Compute nullspace matrix (I - Jbar * J) and lambda matrices ((J * M^-1 * J^T)^-1)
+        lambda_full, lambda_pos, lambda_ori, nullspace_matrix = opspace_matrices(self.mass_matrix,
+                                                                                 self.J_full,
+                                                                                 self.J_pos,
+                                                                                 self.J_ori)
+
+        # Decouples desired positional control from orientation control
+        if self.uncoupling:
+            decoupled_force = np.dot(lambda_pos, desired_force)
+            decoupled_torque = np.dot(lambda_ori, desired_torque)
+            decoupled_wrench = np.concatenate([decoupled_force, decoupled_torque])
+        else:
+            desired_wrench = np.concatenate([desired_force, desired_torque])
+            decoupled_wrench = np.dot(lambda_full, desired_wrench)
+
+        # Gamma (without null torques) = J^T * F + gravity compensations
+        self.torques = np.dot(self.J_full.T, decoupled_wrench) + self.torque_compensation
+
+        # Calculate and add nullspace torques (nullspace_matrix^T * Gamma_null) to final torques
+        # Note: Gamma_null = desired nullspace pose torques, assumed to be positional joint control relative
+        #                     to the initial joint positions
+        self.torques += nullspace_torques(self.mass_matrix, nullspace_matrix,
+                                          self.initial_joint, self.joint_pos, self.joint_vel)
+
         # Always run superclass call for any cleanups at the end
-        # super().run_controller()
-        #
-        # return self.torques
-        return self.pos, self.ori, delta_pos, delta_ori
+        super().run_controller()
+
+        return self.torques
 
     def reset_goal(self):
         """

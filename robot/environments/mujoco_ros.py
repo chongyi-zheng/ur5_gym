@@ -372,7 +372,7 @@ class MujocoROS:
 
         return selected_actuator_ctrlranges, selected_joint_names
 
-    def get_joint_pos(self, joint_names, raw=False):
+    def get_joint_pos(self, joint_names=None, joint_index=None, raw=False):
         # joint_states_msg = None
         if raw:
             # try:
@@ -417,26 +417,39 @@ class MujocoROS:
         #         joint_pos.append(joint_states_msg.position[idx])
 
         if raw:
-            joint_pos = [joint_states.position[joint_states.name.index(name)] for name in joint_names]
+            if joint_names is not None:
+                joint_pos = [joint_states.position[joint_states.name.index(name)] for name in joint_names]
+            else:
+                raise MujocoROSError("'joint_names' must be given when reading joint positions from ROS!")
         else:
             joint_pos = []
-            for name in joint_names:
-                idx = joint_states.name.index(name)
-                if len(joint_states.position[idx].data) == 1:
-                    joint_pos.append(joint_states.position[idx].data[0])
-                else:
-                    joint_pos.append(joint_states.position[idx].data)
+            if joint_names is not None:
+                for name in joint_names:
+                    idx = joint_states.name.index(name)
+                    if len(joint_states.position[idx].data) == 1:
+                        joint_pos.append(joint_states.position[idx].data[0])
+                    else:
+                        joint_pos.append(joint_states.position[idx].data)
+            elif joint_index is not None:
+                for index in joint_index:
+                    if len(joint_states.position[index].data) == 1:
+                        joint_pos.append(joint_states.position[index].data[0])
+                    else:
+                        joint_pos.append(joint_states.position[index].data)
+            else:
+                raise MujocoROSError("'joint_names' or 'joint_index' must be given when reading joint positions from "
+                                     "MuJoCo!")
 
         return joint_pos
 
-    def get_joint_vel(self, joint_names, raw=False):
+    def get_joint_vel(self, joint_names=None, joint_index=None, raw=False):
         # joint_states_msg = None
         if raw:
             # try:
             #     joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 3)
             # except rospy.ROSException as e:
             #     MujocoROSError("Message read failed: {}".format(e))
-            joint_states_msg = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
+            joint_states = rospy.wait_for_message(self.joint_state_topic, sensor_msgs.msg.JointState, 5)
             # with self._joint_states_msg_lock:
             #     joint_states_msg = copy.deepcopy(self._joint_states_msg)
         else:
@@ -468,19 +481,32 @@ class MujocoROS:
         #         joint_vel.append(joint_states_msg.velocity[idx])
 
         if raw:
-            joint_vel = [joint_states.velocity[joint_states.name.index(name)] for name in joint_names]
+            if joint_names is not None:
+                joint_vel = [joint_states.velocity[joint_states.name.index(name)] for name in joint_names]
+            else:
+                raise MujocoROSError("'joint_names' must be given when reading joint velocities from ROS!")
         else:
             joint_vel = []
-            for name in joint_names:
-                idx = joint_states.name.index(name)
-                if len(joint_states.velocity[idx].data) == 1:
-                    joint_vel.append(joint_states.velocity[idx].data[0])
-                else:
-                    joint_vel.append(joint_states.velocity[idx].data)
+            if joint_names is not None:
+                for name in joint_names:
+                    idx = joint_states.name.index(name)
+                    if len(joint_states.velocity[idx].data) == 1:
+                        joint_vel.append(joint_states.velocity[idx].data[0])
+                    else:
+                        joint_vel.append(joint_states.velocity[idx].data)
+            elif joint_index is not None:
+                for index in joint_index:
+                    if len(joint_states.velocity[index].data) == 1:
+                        joint_vel.append(joint_states.velocity[index].data[0])
+                    else:
+                        joint_vel.append(joint_states.velocity[index].data)
+            else:
+                raise MujocoROSError("'joint_names' or 'joint_index' must be given when reading joint velocities from "
+                                     "MuJoCo!")
 
         return joint_vel
 
-    def get_eef_pose(self, eef_site_name=None):
+    def get_eef_pose(self, eef_site_name):
         # if eef_site_name is None:  # read from moveit
         #     eef_pose = self._moveit_manipulator_group.get_current_pose()
         #     eef_pos = [eef_pose.pose.position.x, eef_pose.pose.position.y, eef_pose.pose.position.z]
@@ -520,6 +546,21 @@ class MujocoROS:
         eef_quat = -1 * T.mat2quat(np.array(site_states.rotation_matrix[idx].data).reshape(3, 3))
 
         return eef_pos, eef_quat
+
+    def get_body_pose(self, body_name):
+        request = GetBodyStatesRequest()
+        try:
+            get_body_states_srv = rospy.ServiceProxy(self.prefix + "/get_body_states", GetBodyStates)
+            get_body_states_srv.wait_for_service(3)
+            body_states = get_body_states_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+        idx = body_states.name.index(body_name)
+        body_pos = np.array(body_states.pose[idx].position)
+        body_quat = np.array(body_states.pose[idx].orientation)
+
+        return body_pos, body_quat
 
     # def get_eef_quat(self, eef_body_name=None, format="xyzw"):
     #     # if eef_body_name is None:  # read from moveit
@@ -579,6 +620,28 @@ class MujocoROS:
         eef_vel = np.matmul(jac_mat, joint_velocities)
 
         return eef_vel
+
+    def get_jacobian(self, eef_site_name, raw=False):
+        if raw:
+            request = GetSiteStatesRequest()
+            try:
+                get_site_states_srv = rospy.ServiceProxy(self.prefix + "/get_site_states", GetSiteStates)
+                get_site_states_srv.wait_for_service(3)
+                site_states = get_site_states_srv(request)
+            except rospy.ServiceException as e:
+                raise MujocoROSError("Service call failed: {}".format(e))
+
+            idx = site_states.name.index(eef_site_name)
+            jac_pos = np.array(site_states.jacobian_position[idx].data).reshape(3, -1)
+            jac_ori = np.array(site_states.jacobian_orientation[idx].data).reshape(3, -1)
+            jac_full = np.array(np.vstack([jac_pos, jac_ori]))
+        else:
+            joint_values = self.get_joint_pos(self._arm_joint_names)
+            jac_full = self._moveit_manipulator_group.get_jacobian_matrix(joint_values)
+            jac_pos = np.array(jac_full[:3])
+            jac_ori = np.array(jac_full[3:])
+
+        return jac_pos, jac_ori, jac_full
 
     def get_object_pos(self, object_name):
         # TODO (chongyi zheng): object pose estimation using computer vision algorithm
@@ -649,6 +712,20 @@ class MujocoROS:
 
         return np.array(contact_geoms.geom1), np.array(contact_geoms.geom2)
 
+    def get_mass_matrix(self):
+        request = GetJointStatesRequest()
+        try:
+            get_joint_states_srv = rospy.ServiceProxy(self.prefix + "/get_joint_states", GetJointStates)
+            get_joint_states_srv.wait_for_service(3)
+            joint_states = get_joint_states_srv(request)
+        except rospy.ServiceException as e:
+            raise MujocoROSError("Service call failed: {}".format(e))
+
+        mass_matrix = np.array(joint_states.mass_matrix).reshape(
+            np.sqrt(joint_states.mass_matrix).astype(int) * np.sqrt(joint_states.mass_matrix).astype(int))
+
+        return np.array(mass_matrix)
+
     def set_fixed_camera(self, camera_id):
         request = SetFixedCameraRequest(camera_id=camera_id)
         try:
@@ -693,6 +770,9 @@ class MujocoROS:
             set_joint_qpos_srv(request)
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
+
+    # def set_ctrl(self, index, value):
+
 
     def reset(self):
         # switch_controller_req = SwitchControllerRequest()
