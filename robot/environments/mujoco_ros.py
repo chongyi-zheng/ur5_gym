@@ -949,7 +949,7 @@ class MujocoROS:
         # self._act_pos = ref_pos
         # self._act_quat = ref_quat
 
-    def goto_arm_positions(self, arm_joint_positions, time_from_start=4.0, wait=False):
+    def goto_arm_positions(self, arm_joint_positions, time_from_start=5.0, wait=False):
         # if self.is_position_valid(arm_joint_positions):
         for controller_key, controller_val in self._controllers.items():
             if 'manipulator' in controller_key:
