@@ -66,7 +66,7 @@ class MujocoROS:
 
         # joint trajectory controllers
         self._controllers = self._get_controllers()
-        # self.reset_controllers()
+        self.reset_controllers()
 
         # jog
         # reference: https://github.com/tork-a/jog_control
@@ -316,9 +316,9 @@ class MujocoROS:
         # # self._moveit_gripper_group.allow_replanning(True)
         # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
         # TODO (chongyi zheng): Do we need this?
-        moveit_commander.roscpp_initialize(sys.argv)
-        self._moveit_robot = moveit_commander.RobotCommander()
         try:
+            moveit_commander.roscpp_initialize(sys.argv)
+            self._moveit_robot = moveit_commander.RobotCommander()
             self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
                                                                                  wait_for_servers=20.0)
         except:
@@ -714,16 +714,16 @@ class MujocoROS:
         is_valid = result.valid
         return is_valid
 
-    def goto_arm_positions(self, arm_joint_positions, wait=True):
-        # if self.is_position_valid(arm_joint_positions):
-        #     # go to target joint positions
-        #     self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
-        #
-        #     # calling `stop()` ensures that there is no residual movement
-        #     # self._moveit_manipulator_group.stop()
-        # else:
-        #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
-        self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
+    # def goto_arm_positions(self, arm_joint_positions, wait=True):
+    #     # if self.is_position_valid(arm_joint_positions):
+    #     #     # go to target joint positions
+    #     #     self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
+    #     #
+    #     #     # calling `stop()` ensures that there is no residual movement
+    #     #     # self._moveit_manipulator_group.stop()
+    #     # else:
+    #     #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+    #     self._moveit_manipulator_group.go(arm_joint_positions, wait=wait)
 
     def goto_eef_pose(self, eef_pos, eef_quat, quat_format="xyzw", wait=True):
         assert np.shape(eef_pos) == (3,) and np.shape(eef_quat) == (4,), "Invalid end effector pose!"
@@ -821,10 +821,10 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.75,  # 0.125
-                     angular_delta_scale=0.5):  # 0.1
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.6,  # 0.125
+                     angular_delta_scale=0.25):  # 0.1
         """Send jog message directly"""
-        scaled_linear_delta = -1.0 * linear_delta_scale * np.array(linear_delta)
+        scaled_linear_delta = linear_delta_scale * np.array(linear_delta)
         # to be compatible with MuJoCo rotation direction
         scaled_angular_delta = -1.0 * angular_delta_scale * np.array(angular_delta)
 
@@ -949,46 +949,46 @@ class MujocoROS:
         # self._act_pos = ref_pos
         # self._act_quat = ref_quat
 
-    # def goto_arm_positions(self, arm_joint_positions, time_from_start=4.0, wait=False):
-    #     # if self.is_position_valid(arm_joint_positions):
-    #     for controller_key, controller_val in self._controllers.items():
-    #         if 'manipulator' in controller_key:
-    #             # index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
-    #             # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
-    #             #
-    #             # point = trajectory_msgs.msg.JointTrajectoryPoint()
-    #             # point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
-    #             # point.velocities = []
-    #             # point.accelerations = []
-    #             # point.time_from_start = rospy.Duration().from_sec(time_from_start)
-    #             #
-    #             # goal = control_msgs.msg.FollowJointTrajectoryGoal()
-    #             # goal.trajectory.header.stamp = rospy.Time.now()
-    #             # goal.trajectory.joint_names = controller_val["joints"]
-    #             # goal.trajectory.points.append(point)
-    #
-    #             point = trajectory_msgs.msg.JointTrajectoryPoint()
-    #             point.positions = list(arm_joint_positions.values())
-    #             point.velocities = []
-    #             point.accelerations = []
-    #             point.time_from_start = rospy.Duration().from_sec(time_from_start)
-    #
-    #             goal = control_msgs.msg.FollowJointTrajectoryGoal()
-    #             goal.trajectory.header.stamp = rospy.Time.now()
-    #             goal.trajectory.joint_names = list(arm_joint_positions.keys())
-    #             goal.trajectory.points.append(point)
-    #
-    #             if wait:
-    #                 try:
-    #                     controller_val["traj_client"].send_goal_and_wait(
-    #                         goal, execute_timeout=rospy.Duration.from_sec(time_from_start),
-    #                         preempt_timeout=rospy.Duration.from_sec(time_from_start))
-    #                 except:
-    #                     raise MujocoROSError("Calling trajectory client failed!")
-    #             else:
-    #                 controller_val["traj_client"].send_goal(goal)
-    #     # else:
-    #     #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
+    def goto_arm_positions(self, arm_joint_positions, time_from_start=4.0, wait=False):
+        # if self.is_position_valid(arm_joint_positions):
+        for controller_key, controller_val in self._controllers.items():
+            if 'manipulator' in controller_key:
+                # index_maps = dict((name, idx) for idx, name in enumerate(arm_joint_positions.keys()))
+                # indices = [index_maps[joint_name] for joint_name in controller_val["joints"]]
+                #
+                # point = trajectory_msgs.msg.JointTrajectoryPoint()
+                # point.positions = np.array(list(arm_joint_positions.values()))[indices].tolist()
+                # point.velocities = []
+                # point.accelerations = []
+                # point.time_from_start = rospy.Duration().from_sec(time_from_start)
+                #
+                # goal = control_msgs.msg.FollowJointTrajectoryGoal()
+                # goal.trajectory.header.stamp = rospy.Time.now()
+                # goal.trajectory.joint_names = controller_val["joints"]
+                # goal.trajectory.points.append(point)
+
+                point = trajectory_msgs.msg.JointTrajectoryPoint()
+                point.positions = list(arm_joint_positions.values())
+                point.velocities = []
+                point.accelerations = []
+                point.time_from_start = rospy.Duration().from_sec(time_from_start)
+
+                goal = control_msgs.msg.FollowJointTrajectoryGoal()
+                goal.trajectory.header.stamp = rospy.Time.now()
+                goal.trajectory.joint_names = list(arm_joint_positions.keys())
+                goal.trajectory.points.append(point)
+
+                if wait:
+                    try:
+                        controller_val["traj_client"].send_goal_and_wait(
+                            goal, execute_timeout=rospy.Duration.from_sec(time_from_start),
+                            preempt_timeout=rospy.Duration.from_sec(time_from_start))
+                    except:
+                        raise MujocoROSError("Calling trajectory client failed!")
+                else:
+                    controller_val["traj_client"].send_goal(goal)
+        # else:
+        #     raise MujocoROSError("Invalid joint positions: {}".format(arm_joint_positions))
 
     def goto_gripper_positions(self, gripper_joint_positions, time_from_start=1.0):
         # jog_joint_msg = jog_msgs.msg.JogJoint()

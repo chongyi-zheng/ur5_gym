@@ -191,13 +191,14 @@ class MujocoEnv(metaclass=EnvMeta):
             # reset_success = False
             # while not reset_success:
             #     self.sim.terminate()
-            #     self.sim.spawn()
+            #     self.
+            #     sim.spawn()
             #     reset_success = self.sim.reset_moveit()
             #     # reset_success = self.sim.reset_controllers()
-            self.sim.terminate()
-            self.sim.spawn()
+            # self.sim.terminate()
+            # self.sim.spawn()
             self.sim.reset_moveit()
-            # self.sim.reset_controllers()
+            self.sim.reset_controllers()
         # Reset necessary robosuite-centric variables
         self._reset_internal()
         # TODO (ongyi zheng): delete this
