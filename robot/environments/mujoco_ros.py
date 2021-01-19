@@ -2,6 +2,7 @@ import rospy
 from mujoco_ros_msgs.srv import SetJointQPos, SetJointQPosRequest, SetOptGeomGroup, SetOptGeomGroupRequest, \
     SetFixedCamera, SetFixedCameraRequest, SetCtrl, SetCtrlRequest, GetBodyStates, GetBodyStatesRequest, \
     GetJointStates, GetJointStatesRequest, GetSiteStates, GetSiteStatesRequest
+from jog_msgs.srv import JogFrameCmd, JogFrameCmdRequest
 from std_srvs.srv import Trigger, TriggerRequest
 from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
 import moveit_commander
@@ -82,6 +83,7 @@ class MujocoROS:
 
         self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=1)
         self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
+        self._jog_frame_srv = rospy.ServiceProxy(self.jog_frame_topic, JogFrameCmd)
 
         # state validity
         # try:
@@ -549,9 +551,9 @@ class MujocoROS:
         eef_pose_ori = body_states.pose[idx].orientation
 
         if format == "xyzw":
-            eef_quat = [eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z, eef_pose_ori.w]
+            eef_quat = [-eef_pose_ori.x, -eef_pose_ori.y, -eef_pose_ori.z, -eef_pose_ori.w]
         elif format == "wxyz":
-            eef_quat = [eef_pose_ori.w, eef_pose_ori.x, eef_pose_ori.y, eef_pose_ori.z]
+            eef_quat = [-eef_pose_ori.w, -eef_pose_ori.x, -eef_pose_ori.y, -eef_pose_ori.z]
         else:
             raise MujocoROSError("Invalid end effector quaternion format!")
 
@@ -821,8 +823,8 @@ class MujocoROS:
     #
     #         controller_val["traj_pub"].publish(traj)
 
-    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=0.6,  # 0.125
-                     angular_delta_scale=0.25):  # 0.1
+    def jog_eef_pose(self, linear_delta, angular_delta, avoid_collisions=True, linear_delta_scale=1.0,  # 0.125
+                     angular_delta_scale=1.0):  # 0.1
         """Send jog message directly"""
         scaled_linear_delta = linear_delta_scale * np.array(linear_delta)
         # to be compatible with MuJoCo rotation direction
@@ -848,6 +850,24 @@ class MujocoROS:
             jog_frame_msg.linear_delta.z != 0 or jog_frame_msg.angular_delta.x != 0 or \
             jog_frame_msg.angular_delta.y != 0 or jog_frame_msg.angular_delta.z != 0:
             self._jog_frame_pub.publish(jog_frame_msg)
+
+        # jog_frame_req = JogFrameCmdRequest()
+        # jog_frame_req.header.stamp = rospy.Time.now()
+        # jog_frame_req.header.frame_id = self._jog_base_link
+        # jog_frame_req.group_name = self._jog_group
+        # jog_frame_req.link_name = self._jog_target_link
+        # jog_frame_req.linear_delta.x = scaled_linear_delta[0]
+        # jog_frame_req.linear_delta.y = scaled_linear_delta[1]
+        # jog_frame_req.linear_delta.z = scaled_linear_delta[2]
+        # jog_frame_req.angular_delta.x = scaled_angular_delta[0]
+        # jog_frame_req.angular_delta.y = scaled_angular_delta[1]
+        # jog_frame_req.angular_delta.z = scaled_angular_delta[2]
+        # jog_frame_req.avoid_collisions = avoid_collisions
+        # try:
+        #     self._jog_frame_srv.wait_for_service(3)
+        #     self._jog_frame_srv(jog_frame_req)
+        # except rospy.ServiceException as e:
+        #     raise MujocoROSError("Service call failed: {}".format(e))
 
         # joint_states_msg = None
         # try:
