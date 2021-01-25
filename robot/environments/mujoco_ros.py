@@ -31,7 +31,8 @@ class MujocoROSError(Exception):
 class MujocoROS:
     def __init__(self, node_name="mujoco_ros", prefix="/mujoco_ros", manipulator_group_name="manipulator",
                  gripper_group_name="gripper", state_validity_srv="/check_state_validity",
-                 jog_frame_topic="/jog_frame", jog_joint_topic="/jog_joint", joint_state_topic="/joint_states"):
+                 jog_frame_topic="/jog_frame", jog_joint_topic="/jog_joint", joint_state_topic="/joint_states",
+                 ):
         self.node_name = node_name
         self.prefix = prefix
         self.manipulator_group_name = manipulator_group_name
@@ -41,12 +42,15 @@ class MujocoROS:
         self.state_validity_srv = state_validity_srv
         self.joint_state_topic = joint_state_topic
 
-        # ROS node
-        rospy.init_node(self.node_name, anonymous=True)
+        self._moveit_robot = None
+        self._moveit_manipulator_group = None
+        self._arm_joint_names = None
+        self._controllers = None
+        self._jog_frame_pub = None
+        self._jog_joint_pub = None
 
-        # terminate first, then spawn robot
-        self.terminate()
-        self.spawn()
+        # ROS node
+        rospy.init_node(self.node_name)
 
         # # moveit
         # self._moveit_robot = moveit_commander.RobotCommander()
@@ -60,14 +64,19 @@ class MujocoROS:
         # self._moveit_robot = moveit_commander.RobotCommander()
         # self._moveit_manipulator_group = self._moveit_robot.get_group(self.manipulator_group_name)
         # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._moveit_robot = None
-        self._moveit_manipulator_group = None
-        self._arm_joint_names = None
-        self.reset_moveit()
+        # self._moveit_robot = None
+        # self._moveit_manipulator_group = None
+        # self._arm_joint_names = None
+        # self.reset_moveit()
 
         # joint trajectory controllers
-        self._controllers = self._get_controllers()
-        self.reset_controllers()
+        # self._controllers = None
+        # self._controllers = self._get_controllers()
+        # self.reset_controllers()
+
+        # terminate first, then spawn robot
+        self.terminate()
+        self.spawn()
 
         # jog
         # reference: https://github.com/tork-a/jog_control
@@ -81,31 +90,16 @@ class MujocoROS:
         # self._act_pos = None
         # self._act_quat = None
 
-        self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=1)
-        self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
-        self._jog_frame_srv = rospy.ServiceProxy(self.jog_frame_topic, JogFrameCmd)
+        # self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=1)
+        # self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=1)
+        # self._jog_frame_srv = rospy.ServiceProxy(self.jog_frame_topic, JogFrameCmd)
 
         # state validity
         # try:
         #     self._joint_names = self._get_param("/robot_joints")
         # except MujocoROSError:
         #     self._joint_names = self._moveit_manipulator_group.get_active_joints()
-        self._state_validity = StateValidity(self.state_validity_srv)
-
-        # subscribers and messages
-        # self._joint_states_msg_lock = Lock()
-        # self._raw_joint_states_msg_lock = Lock()
-        # self._site_states_msg_lock = Lock()
-        # self._body_states_msg_lock = Lock()
-        # self._joint_states_msg = None
-        # self._raw_joint_states_msg = None
-        # self._site_states_msg = None
-        # self._body_states_msg = None
-        # rospy.Subscriber(self.joint_state_topic, sensor_msgs.msg.JointState, self._joint_state_callback)
-        # rospy.Subscriber(self.prefix + '/joint_states', mujoco_ros_msgs.msg.JointStates,
-        #                  self._raw_joint_state_callback)
-        # rospy.Subscriber(self.prefix + '/site_states', mujoco_ros_msgs.msg.SiteStates, self._site_state_callback)
-        # rospy.Subscriber(self.prefix + '/body_states', mujoco_ros_msgs.msg.BodyStates, self._body_state_callback)
+        # self._state_validity = StateValidity(self.state_validity_srv)
 
     def _get_param(self, param_name, selections=None):
         try:
@@ -160,12 +154,11 @@ class MujocoROS:
                     trajectory_msgs.msg.JointTrajectory, queue_size=10),
                 "traj_client": actionlib.SimpleActionClient(
                     controller_param["name"] + "/" + action_ns, control_msgs.msg.FollowJointTrajectoryAction)}
-            # if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(15)):
-            #     rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
-            #     # print("{} is ready.".format(controller_param["name"] + "/" + action_ns))
-            # else:
-            #     raise MujocoROSError("Get trajectory controller service failed: {}".format(
-            #         controller_param["name"] + "/" + action_ns))
+            if controllers[controller_param["name"]]["traj_client"].wait_for_server(rospy.Duration(15)):
+                rospy.loginfo("{} is ready.".format(controller_param["name"] + "/" + action_ns))
+            else:
+                raise MujocoROSError("Get trajectory controller service failed: {}".format(
+                    controller_param["name"] + "/" + action_ns))
 
         return controllers
 
@@ -292,6 +285,7 @@ class MujocoROS:
             return selected_indexes
 
     def spawn(self):
+        # spawn robot
         request = TriggerRequest()
         try:
             spawn_sim_srv = rospy.ServiceProxy(self.prefix + "/spawn_sim_environment", Trigger)
@@ -300,7 +294,37 @@ class MujocoROS:
         except rospy.ServiceException as e:
             raise MujocoROSError("Service call failed: {}".format(e))
 
+        # initialize moveit python wrapper
+        # moveit_commander.roscpp_initialize(sys.argv)
+
+        # reset controller and moveit
+        self._controllers = self._get_controllers()
+        # self._moveit_robot = moveit_commander.RobotCommander()
+        # self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
+        #                                                                      wait_for_servers=20.0)
+        # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
+
+        # jog frame and jog joint publishers
+        self._jog_frame_pub = rospy.Publisher(self.jog_frame_topic, jog_msgs.msg.JogFrame, queue_size=10)
+        self._jog_joint_pub = rospy.Publisher(self.jog_joint_topic, jog_msgs.msg.JogJoint, queue_size=10)
+
     def terminate(self):
+        if self._jog_frame_pub is not None:
+            self._jog_frame_pub.unregister()
+            self._jog_joint_pub.unregister()
+            # moveit_commander.roscpp_shutdown()
+
+            for controller in self._controllers.values():
+                controller['traj_pub'].unregister()
+                controller['traj_client'].action_client.stop()
+
+            self._jog_frame_pub = None
+            self._jog_joint_pub = None
+            self._moveit_robot = None
+            self._moveit_manipulator_group = None
+            self._arm_joint_names = None
+            self._controllers = None
+
         request = TriggerRequest()
         try:
             terminate_sim_srv = rospy.ServiceProxy(self.prefix + "/terminate_sim", Trigger)
@@ -319,14 +343,14 @@ class MujocoROS:
         # self._arm_joint_names = self._moveit_manipulator_group.get_active_joints()
         # TODO (chongyi zheng): Do we need this?
         try:
-            moveit_commander.roscpp_initialize(sys.argv)
+            # moveit_commander.roscpp_initialize(sys.argv)
             self._moveit_robot = moveit_commander.RobotCommander()
             self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
                                                                                  wait_for_servers=20.0)
         except:
             self.terminate()
             self.spawn()
-            moveit_commander.roscpp_initialize(sys.argv)
+            # moveit_commander.roscpp_initialize(sys.argv)
             self._moveit_robot = moveit_commander.RobotCommander()
             self._moveit_manipulator_group = moveit_commander.MoveGroupCommander(self.manipulator_group_name,
                                                                                  wait_for_servers=20.0)
@@ -702,19 +726,19 @@ class MujocoROS:
         # except rospy.ServiceException as e:
         #     raise MujocoROSError("Service call failed: {}".format(e))
 
-    def is_position_valid(self, joint_positions):
-        assert isinstance(joint_positions, dict) or isinstance(joint_positions, list) or \
-               isinstance(joint_positions, np.ndarray), "Invalid joint positions to check!"
-
-        rs = moveit_msgs.msg.RobotState()
-        if isinstance(joint_positions, dict):
-            rs.joint_state.name, rs.joint_state.position = list(joint_positions.keys()), list(joint_positions.values())
-        else:
-            rs.joint_state.name, rs.joint_state.position = self._arm_joint_names, list(joint_positions)
-        result = self._state_validity.get_state_validity(rs, self.manipulator_group_name)
-
-        is_valid = result.valid
-        return is_valid
+    # def is_position_valid(self, joint_positions):
+    #     assert isinstance(joint_positions, dict) or isinstance(joint_positions, list) or \
+    #            isinstance(joint_positions, np.ndarray), "Invalid joint positions to check!"
+    #
+    #     rs = moveit_msgs.msg.RobotState()
+    #     if isinstance(joint_positions, dict):
+    #         rs.joint_state.name, rs.joint_state.position = list(joint_positions.keys()), list(joint_positions.values())
+    #     else:
+    #         rs.joint_state.name, rs.joint_state.position = self._arm_joint_names, list(joint_positions)
+    #     result = self._state_validity.get_state_validity(rs, self.manipulator_group_name)
+    #
+    #     is_valid = result.valid
+    #     return is_valid
 
     # def goto_arm_positions(self, arm_joint_positions, wait=True):
     #     # if self.is_position_valid(arm_joint_positions):
