@@ -152,6 +152,7 @@ class Lift(RobotEnv):
             camera_heights=256,
             camera_widths=256,
             camera_depths=False,
+            ros_env_prefix="env",
     ):
         # First, verify that only one robot is being inputted
         self._check_robot_configuration(robots)
@@ -200,6 +201,7 @@ class Lift(RobotEnv):
             camera_heights=camera_heights,
             camera_widths=camera_widths,
             camera_depths=camera_depths,
+            ros_env_prefix=ros_env_prefix,
         )
 
     def reward(self, action=None):

@@ -85,7 +85,8 @@ class MujocoEnv(metaclass=EnvMeta):
             control_freq=10,
             horizon=1000,
             ignore_done=False,
-            hard_reset=True
+            hard_reset=True,
+            ros_env_prefix="env",
     ):
         # First, verify that both the on- and off-screen renderers are not being used simultaneously
         if has_renderer is True and has_offscreen_renderer is True:
@@ -104,6 +105,7 @@ class MujocoEnv(metaclass=EnvMeta):
         self.horizon = horizon
         self.ignore_done = ignore_done
         self.hard_reset = hard_reset
+        self.ros_env_prefix = ros_env_prefix
         self.model = None
         self.cur_time = None
         self.model_timestep = None
@@ -168,7 +170,11 @@ class MujocoEnv(metaclass=EnvMeta):
         # Create the simulation instance and run a single step to make sure changes have propagated through sim state
         # self.sim = MjSim(self.mjpy_model)
         # self.sim.step()
-        self.sim = MujocoROS('ur5e_robotiq_2f_85_mujoco_ros')
+        if self.ros_env_prefix.startswith('/') or self.ros_env_prefix == "":
+            ros_env_prefix = self.ros_env_prefix
+        else:
+            ros_env_prefix = '/' + self.ros_env_prefix
+        self.sim = MujocoROS('ur5e_robotiq_2f_85_mujoco_ros', env_prefix=ros_env_prefix)
 
         # Setup sim time based on control frequency
         self.initialize_time(self.control_freq)

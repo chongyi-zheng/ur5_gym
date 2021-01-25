@@ -99,6 +99,8 @@ class RobotEnv(MujocoEnv):
             bool if same depth setting is to be used for all cameras or else it should be a list of the same length as
             "camera names" param.
 
+        ros_env_prefix (str): ROS environment prefix.
+
     Raises:
         ValueError: [Camera obs require offscreen renderer]
         ValueError: [Camera name must be specified to use camera obs]
@@ -126,6 +128,7 @@ class RobotEnv(MujocoEnv):
             camera_heights=256,
             camera_widths=256,
             camera_depths=False,
+            ros_env_prefix="env",
     ):
         # Robot
         robots = list(robots) if type(robots) is list or type(robots) is tuple else [robots]
@@ -189,6 +192,7 @@ class RobotEnv(MujocoEnv):
             horizon=horizon,
             ignore_done=ignore_done,
             hard_reset=hard_reset,
+            ros_env_prefix=ros_env_prefix,
         )
 
     @property

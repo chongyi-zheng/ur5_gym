@@ -12,6 +12,7 @@ from robot.utils.input_utils import input2action
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", type=str, default="Lift")
+    parser.add_argument("--ros_env_prefix", type=str, default="env")
     parser.add_argument("--robots", nargs="+", type=str, default="Panda", help="Which robot(s) to use in the env")
     parser.add_argument("--grippers", nargs="+", type=str, default="PandaGripper",
                         help="Which gripper(s) to use in the env")
@@ -47,6 +48,7 @@ if __name__ == "__main__":
         "robots": args.robots,
         "gripper_types": args.grippers,
         "controller_configs": controller_config,
+        "ros_env_prefix": args.ros_env_prefix if args.ros_env_prefix != 'none' else '',
     }
 
     # Check if we're using a multi-armed environment and use env_configuration argument if so
