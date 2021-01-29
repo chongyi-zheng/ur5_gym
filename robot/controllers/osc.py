@@ -344,10 +344,10 @@ class OperationalSpaceController(Controller):
         # #                     to the initial joint positions
         # self.torques += nullspace_torques(self.mass_matrix, nullspace_matrix,
         #                                   self.initial_joint, self.joint_pos, self.joint_vel)
-        #
+
         # Always run superclass call for any cleanups at the end
         super().run_controller()
-        #
+
         # return self.torques
         return self.pos, self.ori
 

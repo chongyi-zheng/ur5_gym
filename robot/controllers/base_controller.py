@@ -149,8 +149,14 @@ class Controller(object, metaclass=abc.ABCMeta):
             # self.ee_pos_vel = np.array(self.sim.data.site_xvelp[self.sim.model.site_name2id(self.eef_name)])
             # self.ee_ori_vel = np.array(self.sim.data.site_xvelr[self.sim.model.site_name2id(self.eef_name)])
             # TODO (chongyi zheng): Do we need this?
-            # self.ee_pos = np.array(self.sim.get_eef_pos())
-            # self.ee_ori_mat = T.quat2mat(np.array(self.sim.get_eef_quat()))
+            ee_pos = np.array(self.sim.get_eef_pos(self.eef_name))
+            if self.ee_pos is None or \
+                np.abs(self.ee_pos[0] - ee_pos[0]) > 1e-3 or \
+                np.abs(self.ee_pos[1] - ee_pos[1]) > 1e-3 or \
+                np.abs(self.ee_pos[2] - ee_pos[2]) > 1e-3:  # prevent turbulence
+                self.ee_pos = ee_pos
+            self.ee_ori_mat = np.array(self.sim.get_eef_ori_mat(self.eef_name))
+
             # ee_vel = self.sim.get_eef_vel()
             # self.ee_pos_vel = np.array(ee_vel[:3])
             # self.ee_ori_vel = np.array(ee_vel[3:])

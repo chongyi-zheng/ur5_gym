@@ -12,6 +12,7 @@ from robot.controllers import controller_factory, load_controller_config
 
 # from robosuite.robots.robot import Robot
 from robot.robots.robot import Robot
+from robot.controllers.osc import OperationalSpaceController
 from robosuite.utils.control_utils import DeltaBuffer, RingBuffer
 
 import os
@@ -85,18 +86,19 @@ class SingleArm(Robot):
         self.eef_rot_offset = None                          # rotation offsets from final arm link to gripper (quat)
         self.eef_site_id = None                             # xml element id for eef in mjsim
         self.eef_cylinder_id = None                         # xml element id for eef cylinder in mjsim
-        # self.torques = None                               # Current torques being applied
-        self.pose = None                                   # Current target pose being applied
+        self.torques = None                                 # Current torques being applied
+        self.pos = None                                     # Current target position being applied
+        self.quat = None                                    # Current target quaternion being applied
 
-        self.recent_qpos = None                             # Current and last robot arm qpos
-        self.recent_actions = None                          # Current and last action applied
         # TODO (chongyi zheng): Do we need this?
+        # self.recent_qpos = None                             # Current and last robot arm qpos
+        # self.recent_actions = None                          # Current and last action applied
         # self.recent_torques = None                          # Current and last torques applied
-        self.recent_ee_forcetorques = None                  # Current and last forces / torques sensed at eef
-        self.recent_ee_pose = None                          # Current and last eef pose (pos + ori (quat))
-        self.recent_ee_vel = None                           # Current and last eef velocity
-        self.recent_ee_vel_buffer = None                    # RingBuffer holding prior 10 values of velocity values
-        self.recent_ee_acc = None                           # Current and last eef acceleration
+        # self.recent_ee_forcetorques = None                  # Current and last forces / torques sensed at eef
+        # self.recent_ee_pose = None                          # Current and last eef pose (pos + ori (quat))
+        # self.recent_ee_vel = None                           # Current and last eef velocity
+        # self.recent_ee_vel_buffer = None                    # RingBuffer holding prior 10 values of velocity values
+        # self.recent_ee_acc = None                           # Current and last eef acceleration
 
         super().__init__(
             robot_type=robot_type,
@@ -282,12 +284,13 @@ class SingleArm(Robot):
             arm_action = action
 
         # # Update the controller goal if this is a new policy step
-        # if policy_step:
-        #     self.controller.set_goal(arm_action)
-        scaled_arm_action = self.controller.scale_action(arm_action)
+        if policy_step:
+            self.controller.set_goal(arm_action)
+        # scaled_arm_action = self.controller.scale_action(arm_action)
 
-        # # Now run the controller for a step
-        # pos, quat = self.controller.run_controller()
+        # Now run the controller for a step
+        if isinstance(self.controller, OperationalSpaceController):
+            self.pos, self.quat = self.controller.run_controller()
 
         # Clip the torques
         # low, high = self.torque_limits
@@ -312,10 +315,12 @@ class SingleArm(Robot):
         # Apply pose control
         # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
-        if self.controller.use_ori:
-            self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
-        else:
-            self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
+        if isinstance(self.controller, OperationalSpaceController):
+            # if self.controller.use_ori:
+            #     self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
+            # else:
+            #     self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
+            self.sim.goto_eef_pose(self.pos, self.quat)
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:
