@@ -13,7 +13,7 @@ from robot.controllers import controller_factory, load_controller_config
 # from robosuite.robots.robot import Robot
 from robot.robots.robot import Robot
 from robot.controllers.osc import OperationalSpaceController
-from robosuite.utils.control_utils import DeltaBuffer, RingBuffer
+# from robosuite.utils.control_utils import DeltaBuffer, RingBuffer
 
 import os
 import copy
