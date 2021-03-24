@@ -2,7 +2,7 @@ from .gripper_model import GripperModel
 from .gripper_factory import gripper_factory
 # from .gripper_tester import GripperTester
 
-# from .panda_gripper import PandaGripper
+from .panda_gripper import PandaGripper
 # from .rethink_gripper import RethinkGripper
 from .robotiq_85_gripper import Robotiq85Gripper
 from .robotiq_three_finger_gripper import RobotiqThreeFingerGripper, RobotiqThreeFingerDexterousGripper
@@ -15,7 +15,7 @@ from .null_gripper import NullGripper
 
 GRIPPER_MAPPING = {
     # "RethinkGripper": RethinkGripper,
-    # "PandaGripper": PandaGripper,
+    "PandaGripper": PandaGripper,
     # "JacoThreeFingerGripper": JacoThreeFingerGripper,
     # "JacoThreeFingerDexterousGripper": JacoThreeFingerDexterousGripper,
     # "WipingGripper": WipingGripper,

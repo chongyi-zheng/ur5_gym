@@ -247,8 +247,8 @@ class MujocoEnv(metaclass=EnvMeta):
             # self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
 
         # Set the camera angle for viewing
-        if self.render_camera is not None:
-            self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
+        # if self.render_camera is not None:
+        #     self.sim.set_fixed_camera(camera_id=self.sim.camera_name2id(self.render_camera))
 
         # additional housekeeping
         # self.sim_state_initial = self.sim.get_state()  # TODO (chongyi zheng): this line seems useless

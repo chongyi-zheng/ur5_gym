@@ -1,6 +1,6 @@
 import numpy as np
 # TODO (chongyi zheng): this line has been modified
-# from robosuite.models.robots.robot_model import RobotModel
+from robosuite.models.robots.robot_model import RobotModel
 from robot.models.robots.robot_model import RobotModel
 from robosuite.utils.mjcf_utils import xml_path_completion
 

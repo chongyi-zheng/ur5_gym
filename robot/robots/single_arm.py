@@ -139,7 +139,10 @@ class SingleArm(Robot):
         }
         # TODO (chongyi zheng): replace with position limits
         # self.controller_config["actuator_range"] = self.torque_limits
-        self.controller_config["actuator_range"] = self.position_limits
+        if len(self.robot_model.actuators['pos']) > 0:
+            self.controller_config["actuator_range"] = self.position_limits
+        elif len(self.robot_model.actuators['torq']) > 0:
+            self.controller_config["actuator_range"] = self.torque_limits
         self.controller_config["policy_freq"] = self.control_freq
         self.controller_config["ndim"] = len(self.robot_joints)
 
@@ -284,13 +287,13 @@ class SingleArm(Robot):
             arm_action = action
 
         # # Update the controller goal if this is a new policy step
-        if policy_step:
-            self.controller.set_goal(arm_action)
-        # scaled_arm_action = self.controller.scale_action(arm_action)
+        # if policy_step:
+        #     self.controller.set_goal(arm_action)
+        scaled_arm_action = self.controller.scale_action(arm_action)
 
         # Now run the controller for a step
-        if isinstance(self.controller, OperationalSpaceController):
-            self.pos, self.quat = self.controller.run_controller()
+        # if isinstance(self.controller, OperationalSpaceController):
+        #     self.pos, self.quat = self.controller.run_controller()
 
         # Clip the torques
         # low, high = self.torque_limits
@@ -316,11 +319,11 @@ class SingleArm(Robot):
         # self.sim.goto_eef_pose(self.pose[:3], self.pose[3:], wait=False)
         # self.sim.move_eef_pose(self.pose[:3], self.pose[3:])
         if isinstance(self.controller, OperationalSpaceController):
-            # if self.controller.use_ori:
-            #     self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
-            # else:
-            #     self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
-            self.sim.goto_eef_pose(self.pos, self.quat)
+            if self.controller.use_ori:
+                self.sim.jog_eef_pose(scaled_arm_action[:3], scaled_arm_action[3:])
+            else:
+                self.sim.jog_eef_pose(scaled_arm_action, np.zeros(3))
+            # self.sim.goto_eef_pose(self.pos, self.quat)
 
         # If this is a policy step, also update buffers holding recent values of interest
         # if policy_step:
@@ -350,8 +353,7 @@ class SingleArm(Robot):
         # TODO (chongyi zheng): control with ROS
         # rescale normalized gripper action to control ranges
         # ctrl_range = self.sim.actuator_ctrlrange[self._ref_joint_gripper_actuator_indexes]
-        ctrl_range = np.array(self.sim.get_joint_limits(
-            joint_names=self.gripper_joints, actuator_names=self.gripper.actuators, joint_type='pos'))
+        ctrl_range = np.array(self.sim.get_joint_limits(self.gripper.actuators))
         bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
         weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
         applied_gripper_joint = bias + weight * gripper_action_actual
@@ -483,7 +485,7 @@ class SingleArm(Robot):
         # Position limit values pulled from relevant robot.xml file
         # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
         # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
-        limits = self.sim.get_joint_limits(joint_names=self.robot_joints, joint_type='pos')
+        limits = self.sim.get_joint_limits(self.robot_model.actuators['pos'])
         low = np.array(limits[:, 0])
         high = np.array(limits[:, 1])
 
@@ -501,8 +503,11 @@ class SingleArm(Robot):
                 - (np.array) maximum (high) torque values
         """
         # Torque limit values pulled from relevant robot.xml file
-        low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
-        high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
+        # low = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 0]
+        # high = self.sim.model.actuator_ctrlrange[self._ref_joint_torq_actuator_indexes, 1]
+        limits = self.sim.get_joint_limits(self.robot_model.actuators['torq'])
+        low = np.array(limits[:, 0])
+        high = np.array(limits[:, 1])
 
         return low, high
 
